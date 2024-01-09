@@ -31,7 +31,7 @@ sbt "runMain org.allenai.pdffigures2.FigureExtractorVisualizationCli /absolute/f
 
 For batch processing a whole directory and then saving files to imgs/ and captions to /data with a DPI of 200:
 ```
-sbt "runMain org.allenai.pdffigures2.FigureExtractorBatchCli /home/ronan/Documents/uni_work/phd/micrograph_extractor/data/ -m /home/ronan/Documents/uni_work/phd/micrograph_extractor/data/out/imgs/ -d /home/ronan/Documents/uni_work/phd/micrograph_extractor/data/out/data/ -i 200"
+sbt "runMain org.allenai.pdffigures2.FigureExtractorBatchCli /home/ronan/Documents/uni_work/phd/micrograph_extractor/data/ -m /home/ronan/Documents/uni_work/phd/micrograph_extractor/outputs/imgs/ -d /home/ronan/Documents/uni_work/phd/micrograph_extractor/outputs/data/ -i 200"
 ```
 
 ### LLMS:
