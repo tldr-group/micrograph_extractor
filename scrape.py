@@ -3,6 +3,12 @@ import pandas as pd
 from time import time
 import xml.etree.ElementTree as ET
 from typing import Tuple, List
+from shutil import rmtree
+from os import mkdir
+from os.path import isfile
+
+from extract import single_pdf_extract_process, CWD
+from analyze import detect_composite_image_from_caption
 
 CSV_PATH = "sample_data/paper_data.csv"
 SEP = "«"
@@ -23,14 +29,14 @@ with open("test_scrape.xml", "w+") as f:
 """
 
 
-def create_csv() -> pd.DataFrame:
-    df = pd.DataFrame(columns=["url", "summary", "date"])
-    df.to_csv(CSV_PATH, sep=SEP)
+def create_csv(path: str, columns=["url", "summary", "date"]) -> pd.DataFrame:
+    df = pd.DataFrame(columns=columns)
+    df.to_csv(path, sep=SEP)
     return df
 
 
-def load_csv() -> pd.DataFrame:
-    return pd.read_csv(CSV_PATH, sep=SEP)
+def load_csv(path: str) -> pd.DataFrame:
+    return pd.read_csv(path, sep=SEP)
 
 
 def make_api_request(
@@ -79,12 +85,32 @@ def add_to_csv(
     return sum_df
 
 
-def save_df(df: pd.DataFrame) -> None:
-    df.to_csv(CSV_PATH, sep=SEP)
+def add_to_index_csv(
+    file_paths: List[str],
+    captions: List[str],
+    summaries: List[str],
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    new_df = pd.DataFrame(
+        data={
+            "file_path": file_paths,
+            "captions": captions,
+            "summary": summaries,
+        }
+    )
+    sum_df = pd.concat([df, new_df])
+    return sum_df
+
+
+def save_df(df: pd.DataFrame, path: str) -> None:
+    df.to_csv(path, sep=SEP)
 
 
 def paper_info_loop() -> None:
-    df = create_csv()
+    if not isfile(CSV_PATH):
+        df = create_csv(CSV_PATH)
+    else:
+        df = load_csv(CSV_PATH)
 
     prev_time = time()
     n_papers = 0
@@ -98,19 +124,66 @@ def paper_info_loop() -> None:
 
             if len(ids) > 1:
                 df = add_to_csv(ids, summaries, dates, df)
-                save_df(df)
+                save_df(df, CSV_PATH)
                 n_papers += len(ids)
                 print(f"Successful scrape of {len(ids)} papers. \nTotal N={n_papers}")
             prev_time = new_time
+
+
+def strip_paper_name(name: str) -> str:
+    return name.replace(".", "_")
 
 
 def download_pdf(url: str, save_path: str) -> None:
     id = url.split("/")[-1]
     pdf_url = f"http://export.arxiv.org/pdf/{id}.pdf"
     result = requests.get(pdf_url)
-    with open(save_path, "wb+") as f:a
+    with open(save_path, "wb+") as f:
         f.write(result.content)
 
 
+def reset_tmp() -> None:
+    rmtree("tmp")
+    mkdir("tmp")
+    mkdir("tmp/imgs")
+
+
+def download_extract(url: str, summary: str, df: pd.DataFrame) -> pd.DataFrame:
+    filename = strip_paper_name(url.split("/")[-1])
+    download_pdf(url, f"tmp/{filename}.pdf")
+    captions, img_paths = single_pdf_extract_process(
+        f"{CWD}/tmp/{filename}.pdf", f"{CWD}/tmp/imgs/", f"{CWD}/tmp/", "dataset/imgs/"
+    )
+    summaries = [summary for i in range(len(captions))]
+    new_df = add_to_index_csv(img_paths, captions, summaries, df)
+    reset_tmp()
+    return new_df
+
+
+def download_pdf_loop() -> None:
+    names_df = load_csv("dataset/paper_data.csv")
+    if not isfile("dataset/index.csv"):
+        index_df = create_csv("dataset/index.csv", ["file_path", "captions", "summary"])
+    else:
+        index_df = load_csv("dataset/index.csv")
+
+    i = 0
+    stop = 100
+    prev_time = time()
+    while i < stop:
+        new_time = time()
+        if (new_time - prev_time) > REQUEST_DELAY_S:
+            print(i)
+            row = names_df.iloc[i]
+            url = row["url"]
+            summary = row["summary"]
+            download_extract(url, summary, index_df)
+            save_df(index_df, "dataset/index.csv")
+            prev_time = new_time
+            i += 1
+
+
 if __name__ == "__main__":
-    download_pdf("http://arxiv.org/abs/2210.02100v3", "foo.pdf")
+    # print(CWD)
+    # download_extract("http://arxiv.org/abs/2401.02538v1")
+    download_pdf_loop()

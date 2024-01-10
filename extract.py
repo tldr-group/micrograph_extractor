@@ -6,6 +6,8 @@ from skimage.measure import label
 from skimage.morphology import binary_opening
 from os import getcwd, listdir
 from time import time
+import json
+from analyze import detect_composite_image_from_caption
 from typing import List, Tuple
 
 # ==================================== EXTRACT FIGURES AND CAPTIONS ====================================
@@ -71,6 +73,7 @@ def extract_first_page(read_path: str) -> str:
     """PDFs not well structured and publishing styles vary - not all papers will have an abstract with a title like 'ABSTRACT'
     to delineate it from the rest of the text - simple solution is to just feed the whole first page to the RAG, so this
     function extracts the whole first page. TODO: check if need to remove newlines in the text or not
+    TODO: remove as not neeeded - arxiv has a nice summary section from api with the abstract in it
 
     :param read_path: path to the pdf (absolute or relative)
     :type read_path: str
@@ -81,13 +84,6 @@ def extract_first_page(read_path: str) -> str:
     init_page = reader.pages[0]
     text = init_page.extract_text()
     return text
-
-
-def detect_composite_image_from_caption(caption: str) -> bool:
-    if "(a)" in caption.lower() or "a." in caption.lower():
-        return True
-    else:
-        return False
 
 
 # ==================================== HANDLE IMAGES ====================================
@@ -178,8 +174,26 @@ def split_composite_figure(figure: Image.Image) -> List[np.ndarray]:
     return out_img_arrs
 
 
+# ==================================== FILE I/O ====================================
+
+
+def load_list_json(path: str) -> List[dict]:
+    with open(path) as f:
+        data = json.load(f)
+    return data
+
+
+def get_caption(all_captions: List[dict], idx: int) -> str:
+    for caption_dict in all_captions:
+        fig_type = caption_dict["figType"]
+        fig_idx = int(caption_dict["name"])
+        if fig_type == "Figure" and fig_idx == idx:
+            return caption_dict["caption"]
+    return "not found"
+
+
 def batch_extract_and_process(
-    pdf_folder_path: str, out_img_path: str, out_data_path: str
+    pdf_folder_path: str, out_img_path: str, out_data_path: str, out_processed_path: str
 ) -> None:
     extract_figures_captions(pdf_folder_path, out_img_path, out_data_path)
 
@@ -191,9 +205,45 @@ def batch_extract_and_process(
         split_arrs = split_composite_figure(img)
         for i, arr in enumerate(split_arrs):
             img = arr_to_img(arr, "RGB")
-            img.save(f"outputs/processed/p{j}_{i}.jpg")
+            img.save(f"{out_processed_path}p{j}_{i}.jpg")
+
+
+def single_pdf_extract_process(
+    pdf_path: str,
+    out_img_path: str,
+    out_data_path: str,
+    out_processed_path: str,
+) -> Tuple[List[str], List[str]]:
+    filename = pdf_path.split("/")[-1].split(".")[0]
+    extract_figures_captions(pdf_path, out_img_path, out_data_path)
+    json = load_list_json(f"{out_data_path}{filename}.json")
+    captions: List[str] = []
+    img_paths: List[str] = []
+    for fig_idx, fig_path in enumerate(listdir(out_img_path)):
+        if "Table" in fig_path:
+            continue
+        caption = get_caption(json, fig_idx)
+        print(caption)
+        img = Image.open(f"{out_img_path}{fig_path}")
+        if detect_composite_image_from_caption(caption):
+            split_arrs = split_composite_figure(img)
+            for i, arr in enumerate(split_arrs):
+                img = arr_to_img(arr, "RGB")
+                img.save(f"{out_processed_path}{filename}_fig_{fig_idx}_{i}.jpg")
+                captions.append(caption)
+                img_paths.append(
+                    f"{out_processed_path}{filename}_fig_{fig_idx}_{i}.jpg"
+                )
+        else:
+            img.save(f"{out_processed_path}{filename}_fig_{fig_idx}_0.jpg")
+            captions.append(caption)
+            img_paths.append(f"{out_processed_path}{filename}_fig_{fig_idx}_0.jpg")
+
+    return captions, img_paths
 
 
 if __name__ == "__main__":
-    batch_extract_and_process(TEST_PDF_PATH, TEST_IMG_PATH, TEST_DATA_PATH)
+    batch_extract_and_process(
+        TEST_PDF_PATH, TEST_IMG_PATH, TEST_DATA_PATH, "outputs/processed/"
+    )
     # print(extract_first_page("sample_data/sem_diamond.pdf"))
