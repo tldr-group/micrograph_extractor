@@ -1,17 +1,23 @@
 import subprocess
+from pypdf import PdfReader
 import numpy as np
 from PIL import Image
 from skimage.measure import label
 from skimage.morphology import binary_opening
-from os import getcwd
+from os import getcwd, listdir
+from time import time
 from typing import List, Tuple
+
+# ==================================== EXTRACT FIGURES AND CAPTIONS ====================================
 
 CWD = getcwd()
 PDFF2_PATH: str = f"{CWD}/pdffigures2/"
 PDFF2_CMD: str = "runMain org.allenai.pdffigures2.FigureExtractorBatchCli"
-TEST_PDF_PATH: str = f"{CWD}/data/"
+TEST_PDF_PATH: str = f"{CWD}/sample_data/"
 TEST_IMG_PATH: str = f"{CWD}/outputs/imgs/"
 TEST_DATA_PATH: str = f"{CWD}/outputs/data/"
+
+INSTRUMENTS = ["SEM", "STEM", "TEM", "XCT", "RFM"]
 
 
 def extract_figures_captions(
@@ -61,8 +67,33 @@ def extract_figures_captions(
     return exit_code
 
 
+def extract_first_page(read_path: str) -> str:
+    """PDFs not well structured and publishing styles vary - not all papers will have an abstract with a title like 'ABSTRACT'
+    to delineate it from the rest of the text - simple solution is to just feed the whole first page to the RAG, so this
+    function extracts the whole first page. TODO: check if need to remove newlines in the text or not
+
+    :param read_path: path to the pdf (absolute or relative)
+    :type read_path: str
+    :return: text of the first page
+    :rtype: str
+    """
+    reader = PdfReader(read_path)
+    init_page = reader.pages[0]
+    text = init_page.extract_text()
+    return text
+
+
+def detect_composite_image_from_caption(caption: str) -> bool:
+    if "(a)" in caption.lower() or "a." in caption.lower():
+        return True
+    else:
+        return False
+
+
+# ==================================== HANDLE IMAGES ====================================
+
 WHITE_CUTOFF: int = 250  # pixel value to treat as white i.e bg
-AREA_CUTOFF: int = 100 * 100  # smallest figure size
+AREA_CUTOFF: int = 200 * 200  # smallest figure size
 OFFSETS = [(3, 3), (-3, -3)]
 
 
@@ -113,6 +144,16 @@ def check_area_from_bbox(bbox: List[int], area_cutoff: int) -> bool:
 
 
 def get_subimage_bboxes(greyscale_figure_arr: np.ndarray) -> List[List[int]]:
+    """Binarize figure by setting all pixels above cutoff (i.e white pixels from borders) to 0.
+    Next, morphologically open the image to get rid of pixel artefacts, then use skimage.label
+    to assign labels to connected components. Finally find bboxes for each connected component
+    and return.
+
+    :param greyscale_figure_arr: a composite figure with white borders around each subfigure
+    :type greyscale_figure_arr: np.ndarray
+    :return: list of bounding boxes of subfigures in the image
+    :rtype: List[List[int]]
+    """
     binary_arr = binarize_img(greyscale_figure_arr, WHITE_CUTOFF)
     labelled_arr, n_subimages = label(binary_arr, return_num=True)  # type: ignore
     bboxes: List[List[int]] = []
@@ -137,12 +178,22 @@ def split_composite_figure(figure: Image.Image) -> List[np.ndarray]:
     return out_img_arrs
 
 
+def batch_extract_and_process(
+    pdf_folder_path: str, out_img_path: str, out_data_path: str
+) -> None:
+    extract_figures_captions(pdf_folder_path, out_img_path, out_data_path)
+
+    for j, img_path in enumerate(listdir(out_img_path)):
+        if "Table" in img_path:
+            continue
+        img = Image.open(f"{out_img_path}{img_path}").convert("L")
+        arr = img_to_arr(img, "L")
+        split_arrs = split_composite_figure(img)
+        for i, arr in enumerate(split_arrs):
+            img = arr_to_img(arr, "RGB")
+            img.save(f"outputs/processed/p{j}_{i}.jpg")
+
+
 if __name__ == "__main__":
-    img = Image.open(f"{TEST_IMG_PATH}/p0-Figure1-1.png").convert("L")
-    arr = img_to_arr(img, "L")
-    print(arr.shape, arr.dtype)
-    print(np.amax(arr), np.amin(arr))
-    split_arrs = split_composite_figure(img)
-    for i, arr in enumerate(split_arrs):
-        img = arr_to_img(arr, "RGB")
-        img.save(f"{i}.png")
+    batch_extract_and_process(TEST_PDF_PATH, TEST_IMG_PATH, TEST_DATA_PATH)
+    # print(extract_first_page("sample_data/sem_diamond.pdf"))
