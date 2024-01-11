@@ -167,3 +167,4 @@ sample_data/*
 dataset/*
 tmp/*
 scratchpad.ipynb
+old/*
