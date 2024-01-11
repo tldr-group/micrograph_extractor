@@ -6,27 +6,18 @@ from typing import Tuple, List
 from shutil import rmtree
 from os import mkdir
 from os.path import isfile
+import numpy as np
 
 from extract import single_pdf_extract_process, CWD
-from analyze import detect_composite_image_from_caption
 
-CSV_PATH = "sample_data/paper_data.csv"
+np.random.seed(2189)
+
+CSV_PATH = "dataset/paper_data.csv"
 SEP = "«"
 MAX_RESULTS = 300
 # up to 4 requests per second with 1s sleep
 REQUEST_DELAY_S: float = 3
 N_RETRIES: int = 3
-
-"""
-url = "http://export.arxiv.org/api/query?search_query=all:checkerboard&start=0&max_results=100&sortBy=lastUpdatedDate&sortOrder=descending"
-
-results = requests.get(
-    url,
-)  # headers=arxiv_api_headers
-
-with open("test_scrape.xml", "w+") as f:
-    f.write(results.text)
-"""
 
 
 def create_csv(path: str, columns=["url", "summary", "date"]) -> pd.DataFrame:
@@ -114,7 +105,7 @@ def paper_info_loop() -> None:
 
     prev_time = time()
     n_papers = 0
-    max_papers = 1000
+    max_papers = 14000
 
     while n_papers < max_papers:
         new_time = time()
@@ -160,12 +151,16 @@ def download_extract(url: str, summary: str, df: pd.DataFrame) -> pd.DataFrame:
     return new_df
 
 
-def download_pdf_loop() -> None:
+def download_pdf_loop(n_samples: int = 100) -> None:
     names_df = load_csv("dataset/paper_data.csv")
     if not isfile("dataset/index.csv"):
         index_df = create_csv("dataset/index.csv", ["file_path", "captions", "summary"])
     else:
         index_df = load_csv("dataset/index.csv")
+    reset_tmp()
+
+    indices = np.arange(0, len(names_df.index))
+    chosen_indices = np.random.choice(indices, size=n_samples, replace=False)
 
     i = 0
     stop = 100
@@ -173,17 +168,23 @@ def download_pdf_loop() -> None:
     while i < stop:
         new_time = time()
         if (new_time - prev_time) > REQUEST_DELAY_S:
-            print(i)
-            row = names_df.iloc[i]
-            url = row["url"]
-            summary = row["summary"]
-            download_extract(url, summary, index_df)
-            save_df(index_df, "dataset/index.csv")
+            chosen_idx = chosen_indices[i]
+            print(f"{new_time} [{i}/{stop}]: scraping paper {chosen_idx}")
+            try:
+                row = names_df.iloc[chosen_idx]
+                url = row["url"]
+                summary = row["summary"]
+                index_df = download_extract(url, summary, index_df)
+                save_df(index_df, "dataset/index.csv")
+                i += 1
+            except:
+                print("Fail!")
+                i += 1
             prev_time = new_time
-            i += 1
 
 
 if __name__ == "__main__":
     # print(CWD)
     # download_extract("http://arxiv.org/abs/2401.02538v1")
     download_pdf_loop()
+    # paper_info_loop()

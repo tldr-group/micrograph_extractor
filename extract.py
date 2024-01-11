@@ -185,8 +185,15 @@ def load_list_json(path: str) -> List[dict]:
 
 def get_caption(all_captions: List[dict], idx: int) -> str:
     for caption_dict in all_captions:
-        fig_type = caption_dict["figType"]
-        fig_idx = int(caption_dict["name"])
+        try:
+            fig_type = caption_dict["figType"]
+        except KeyError:
+            return "not found"
+        try:
+            fig_idx = int(caption_dict["name"])
+        except ValueError:
+            return "not found"
+
         if fig_type == "Figure" and fig_idx == idx:
             return caption_dict["caption"]
     return "not found"
@@ -220,25 +227,20 @@ def single_pdf_extract_process(
     captions: List[str] = []
     img_paths: List[str] = []
     for fig_idx, fig_path in enumerate(listdir(out_img_path)):
+        # this isn't right - no guarantee order in directory is their figure order. should use filename in tmp instead
+        # this is why i get so many 'not found's - it's only finding them when by chance the order in the directory matches
+        # the correct figure number
         if "Table" in fig_path:
             continue
         caption = get_caption(json, fig_idx)
-        print(caption)
         img = Image.open(f"{out_img_path}{fig_path}")
-        if detect_composite_image_from_caption(caption):
-            split_arrs = split_composite_figure(img)
-            for i, arr in enumerate(split_arrs):
-                img = arr_to_img(arr, "RGB")
-                img.save(f"{out_processed_path}{filename}_fig_{fig_idx}_{i}.jpg")
-                captions.append(caption)
-                img_paths.append(
-                    f"{out_processed_path}{filename}_fig_{fig_idx}_{i}.jpg"
-                )
-        else:
-            img.save(f"{out_processed_path}{filename}_fig_{fig_idx}_0.jpg")
+        # Alway split - if its a single figure it (hopefully) won't split anyway
+        split_arrs = split_composite_figure(img)
+        for i, arr in enumerate(split_arrs):
+            img = arr_to_img(arr, "RGB")
+            img.save(f"{out_processed_path}{filename}_fig_{fig_idx}_{i}.jpg")
             captions.append(caption)
-            img_paths.append(f"{out_processed_path}{filename}_fig_{fig_idx}_0.jpg")
-
+            img_paths.append(f"{out_processed_path}{filename}_fig_{fig_idx}_{i}.jpg")
     return captions, img_paths
 
 
