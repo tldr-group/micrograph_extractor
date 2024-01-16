@@ -1,13 +1,10 @@
 import subprocess
-from pypdf import PdfReader
 import numpy as np
 from PIL import Image
 from skimage.measure import label
 from skimage.morphology import binary_opening
 from os import getcwd, listdir
-from time import time
 import json
-from analyze import detect_composite_image_from_caption
 from typing import List, Tuple
 
 # ==================================== EXTRACT FIGURES AND CAPTIONS ====================================
@@ -18,8 +15,6 @@ PDFF2_CMD: str = "runMain org.allenai.pdffigures2.FigureExtractorBatchCli"
 TEST_PDF_PATH: str = f"{CWD}/sample_data/"
 TEST_IMG_PATH: str = f"{CWD}/outputs/imgs/"
 TEST_DATA_PATH: str = f"{CWD}/outputs/data/"
-
-INSTRUMENTS = ["SEM", "STEM", "TEM", "XCT", "RFM"]
 
 
 def extract_figures_captions(
@@ -69,21 +64,18 @@ def extract_figures_captions(
     return exit_code
 
 
-def extract_first_page(read_path: str) -> str:
-    """PDFs not well structured and publishing styles vary - not all papers will have an abstract with a title like 'ABSTRACT'
-    to delineate it from the rest of the text - simple solution is to just feed the whole first page to the RAG, so this
-    function extracts the whole first page. TODO: check if need to remove newlines in the text or not
-    TODO: remove as not neeeded - arxiv has a nice summary section from api with the abstract in it
+def get_figure_number(fig_img_fname: str) -> int:
+    """Given filename like sem_diamond-Figure3-1.png, return 3. Assumes no hyphens in pdf name.
 
-    :param read_path: path to the pdf (absolute or relative)
-    :type read_path: str
-    :return: text of the first page
-    :rtype: str
+    :param fig_img_fname: filename of figure image extracted by pdffigures2
+    :type fig_img_fname: str
+    :return: number of that figure (1-indexed)
+    :rtype: int
     """
-    reader = PdfReader(read_path)
-    init_page = reader.pages[0]
-    text = init_page.extract_text()
-    return text
+    fig_name = fig_img_fname.split("-")[-2]
+    e_idx = fig_name.find("e")
+    number = int(fig_name[e_idx + 1 :])
+    return number
 
 
 # ==================================== HANDLE IMAGES ====================================
@@ -178,12 +170,31 @@ def split_composite_figure(figure: Image.Image) -> List[np.ndarray]:
 
 
 def load_list_json(path: str) -> List[dict]:
+    """pdffigures2 saves caption to <pdfname>.json as a list of dicts that contain figure data.
+
+    :param path: path to the .json file
+    :type path: str
+    :return: list of figure dicts
+    :rtype: List[dict]
+    """
     with open(path) as f:
         data = json.load(f)
     return data
 
 
 def get_caption(all_captions: List[dict], idx: int) -> str:
+    """Given the list of all caption dicts and a desired figure number (1-indexed), return caption associated
+    with that figure. We need to loop through every dictionary as the list of dicts aren't in order. Each
+    figure dict has a 'name' field that is usually equal to the figure's number, i.e for Figure 1 the 'name'
+    field is '1'
+
+    :param all_captions: list of figure dicts from pdffigures2
+    :type all_captions: List[dict]
+    :param idx: desired figure idx
+    :type idx: int
+    :return: caption for Figure $idx
+    :rtype: str
+    """
     for caption_dict in all_captions:
         try:
             fig_type = caption_dict["figType"]
@@ -221,20 +232,33 @@ def single_pdf_extract_process(
     out_data_path: str,
     out_processed_path: str,
 ) -> Tuple[List[str], List[str]]:
+    """Given ABSOLUTE path to PDF and ABSOLUTE paths to where to dump the images and caption data (usually .../tmp/),
+    call pdffigures2 to extract. Then loop through all extracted images, find which figure they belong to and th
+
+    :param pdf_path: _description_
+    :type pdf_path: str
+    :param out_img_path: _description_
+    :type out_img_path: str
+    :param out_data_path: _description_
+    :type out_data_path: str
+    :param out_processed_path: _description_
+    :type out_processed_path: str
+    :return: _description_
+    :rtype: Tuple[List[str], List[str]]
+    """
+    # TODO: edit this to just return list of captions and figure they belong to (1-indexed) to work with new file strucutre
     filename = pdf_path.split("/")[-1].split(".")[0]
     extract_figures_captions(pdf_path, out_img_path, out_data_path)
     json = load_list_json(f"{out_data_path}{filename}.json")
     captions: List[str] = []
     img_paths: List[str] = []
-    for fig_idx, fig_path in enumerate(listdir(out_img_path)):
-        # this isn't right - no guarantee order in directory is their figure order. should use filename in tmp instead
-        # this is why i get so many 'not found's - it's only finding them when by chance the order in the directory matches
-        # the correct figure number
+    for fig_path in listdir(out_img_path):
+        fig_idx = get_figure_number(fig_path)
         if "Table" in fig_path:
             continue
         caption = get_caption(json, fig_idx)
         img = Image.open(f"{out_img_path}{fig_path}")
-        # Alway split - if its a single figure it (hopefully) won't split anyway
+        # Alway split - if it's a single figure it (hopefully) won't split anyway
         split_arrs = split_composite_figure(img)
         for i, arr in enumerate(split_arrs):
             img = arr_to_img(arr, "RGB")

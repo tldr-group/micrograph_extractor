@@ -134,7 +134,10 @@ def download_pdf(url: str, save_path: str) -> None:
 
 
 def reset_tmp() -> None:
-    rmtree("tmp")
+    try:
+        rmtree("tmp")
+    except FileNotFoundError:
+        pass
     mkdir("tmp")
     mkdir("tmp/imgs")
 
@@ -152,6 +155,7 @@ def download_extract(url: str, summary: str, df: pd.DataFrame) -> pd.DataFrame:
 
 
 def download_pdf_loop(n_samples: int = 100) -> None:
+    reset_tmp()
     names_df = load_csv("dataset/paper_data.csv")
     if not isfile("dataset/index.csv"):
         index_df = create_csv("dataset/index.csv", ["file_path", "captions", "summary"])
