@@ -1,5 +1,3 @@
 numpy==1.26.3
 scikit-image==0.22.0
 Pillow==10.2.0
-paperscraper==0.2.9
-pypdf==3.17.4
