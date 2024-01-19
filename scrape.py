@@ -88,8 +88,9 @@ def download_pdf_loop(n_samples: int = 100) -> None:
 
 
 if __name__ == "__main__":
-    # print(CWD)
+    print(CWD)
     # download_extract("http://arxiv.org/abs/2401.02538v1")
     # download_pdf_loop()
-    scraper = ArxivScraper()
-    paper_info_loop(scraper, "all:microscopy")
+
+    # scraper = ArxivScraper()
+    # paper_info_loop(scraper, "all:microscopy")
