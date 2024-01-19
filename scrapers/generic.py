@@ -2,6 +2,7 @@ from typing import List, Tuple
 import xml.etree.ElementTree as ET
 from os import mkdir
 from dataclasses import dataclass, asdict
+from json import dump
 
 
 @dataclass

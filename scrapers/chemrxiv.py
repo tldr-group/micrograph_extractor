@@ -1,8 +1,8 @@
 import requests
 from typing import Tuple, List
-from json import dump, loads
 
-from .generic import PaperEntry, GenericScraper, make_folder, asdict
+
+from .generic import PaperEntry, GenericScraper, make_folder, asdict, dump
 
 
 class ChemrxivScraper(GenericScraper):
@@ -15,7 +15,7 @@ class ChemrxivScraper(GenericScraper):
         sort_order="PUBLISHED_DATE_DESC",
     ) -> int:
         result = self.make_api_request(query, start, max_results, sort_by, sort_order)
-        n_papers = result["totalCount"]
+        n_papers = int(result["totalCount"])
         if n_papers == 0:
             print("WARNING: no results!")
             print(result)
