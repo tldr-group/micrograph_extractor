@@ -2,7 +2,7 @@ import requests
 import xml.etree.ElementTree as ET
 from typing import Tuple, List
 
-from generic import GenericScraper, PaperEntry, make_folder, asdict, dump
+from .generic import GenericScraper, PaperEntry, make_folder, asdict, dump
 
 
 class ArxivScraper(GenericScraper):
@@ -12,11 +12,11 @@ class ArxivScraper(GenericScraper):
         start: int = 0,
         max_results: int = 50,
         sort_by: str = "lastUpdatedDate",
-        sort_order="PUBLISHED_DATE_DESC",
+        sort_order="descending",
     ) -> int:
         result = self.make_api_request(query, start, max_results, sort_by, sort_order)
-        self.handle_entries(result)  # type: ignore
-        return 0
+        n_papers = self.handle_entries(result)  # type: ignore
+        return n_papers
 
     def make_api_request(
         self,
@@ -32,7 +32,8 @@ class ArxivScraper(GenericScraper):
 
     def handle_entries(  # type: ignore[override]
         self, entries: str, dataset_path: str = "dataset/papers/"
-    ) -> None:
+    ) -> int:
+        n_papers = 0
         root = ET.fromstring(entries)
         for child in root:
             if "entry" in child.tag:
@@ -40,6 +41,8 @@ class ArxivScraper(GenericScraper):
                 folder_name = self.doi_to_folder_name(paper_entry.doi)
                 make_folder(dataset_path + folder_name)
                 self.save_paper_data(paper_entry, dataset_path + folder_name)
+                n_papers += 1
+        return n_papers
 
     def handle_entry(self, entry_elem: ET.Element) -> PaperEntry:  # type: ignore[override]
         id, title, authors, abstract, date = "", "", [], "", ""

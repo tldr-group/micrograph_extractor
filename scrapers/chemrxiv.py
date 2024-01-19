@@ -15,11 +15,10 @@ class ChemrxivScraper(GenericScraper):
         sort_order="PUBLISHED_DATE_DESC",
     ) -> int:
         result = self.make_api_request(query, start, max_results, sort_by, sort_order)
-        n_papers = int(result["totalCount"])
+        n_papers = self.handle_entries(result)  # type: ignore
         if n_papers == 0:
             print("WARNING: no results!")
             print(result)
-        self.handle_entries(result)  # type: ignore
         return n_papers
 
     def make_api_request(
@@ -34,7 +33,8 @@ class ChemrxivScraper(GenericScraper):
         result = requests.get(url)
         return result.json()
 
-    def handle_entries(self, entries: dict, dataset_path: str = "dataset/papers/") -> None:  # type: ignore[override]
+    def handle_entries(self, entries: dict, dataset_path: str = "dataset/papers/") -> int:  # type: ignore[override]\
+        n_papers = 0
         item_list = entries["itemHits"]
         for _item in item_list:
             item = _item["item"]
@@ -42,7 +42,8 @@ class ChemrxivScraper(GenericScraper):
             folder_name = self.doi_to_folder_name(paper_entry.doi)
             make_folder(dataset_path + folder_name)
             self.save_paper_data(paper_entry, dataset_path + folder_name)
-            # save paper data to a .json in that folder
+            n_papers += 1
+        return n_papers
 
     def handle_entry(self, json_entry: dict) -> PaperEntry:  # type: ignore[override]
         values = []

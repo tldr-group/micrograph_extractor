@@ -23,6 +23,16 @@ def make_folder(dir_name: str) -> None:
 
 
 class GenericScraper:
+    def scrape(
+        self,
+        query: str,
+        start: int = 0,
+        max_results: int = 50,
+        sort_by: str = "lastUpdatedDate",
+        sort_order="PUBLISHED_DATE_DESC",
+    ) -> int:
+        return 0
+
     def make_api_request(
         self,
         query_term: str,
@@ -46,8 +56,8 @@ class GenericScraper:
             "null",
         )
 
-    def handle_entries(self, entries: str | dict) -> None:
-        return
+    def handle_entries(self, entries: str | dict) -> int:
+        return 0
 
     def download_pdf(self, paper_id: str, save_path: str) -> None:
         return
