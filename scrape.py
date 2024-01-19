@@ -39,6 +39,7 @@ def reset_tmp() -> None:
         pass
     mkdir("tmp")
     mkdir("tmp/imgs")
+    #
 
 
 def download_extract(scraper: GenericScraper, paper_path: str) -> None:
