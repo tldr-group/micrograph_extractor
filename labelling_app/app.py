@@ -1,13 +1,18 @@
 import tkinter as tk
 from tkinter import ttk
+from PIL import ImageTk, Image
 from tkinter import filedialog as fd
 from os import listdir
+from json import load, dump
 
 from typing import Literal, Tuple, List
+
+import re
 
 FONT = ("", 14)
 LARGER_FONT = ("", 16)
 HALF_W = 1000
+MAX_IMG_D = int(HALF_W * 0.7)
 PADX = (20, 20)
 PADY = (10, 10)
 
@@ -23,6 +28,61 @@ def open_file_dialog_return_fps(
     return filepaths
 
 
+def load_json(path: str) -> dict:
+    with open(path, "r") as f:
+        data = load(f)
+    return data
+
+
+def save_json(path: str, data: dict | List[dict]) -> None:
+    with open(path, "w+") as f:
+        dump(data, f, ensure_ascii=False, indent=4)
+
+
+def get_caption(all_captions: List[dict], idx: int) -> str:
+    """Given the list of all caption dicts and a desired figure number (1-indexed), return caption associated
+    with that figure. We need to loop through every dictionary as the list of dicts aren't in order. Each
+    figure dict has a 'name' field that is usually equal to the figure's number, i.e for Figure 1 the 'name'
+    field is '1'
+
+    :param all_captions: list of figure dicts from pdffigures2
+    :type all_captions: List[dict]
+    :param idx: desired figure idx
+    :type idx: int
+    :return: caption for Figure $idx
+    :rtype: str
+    """
+    for caption_dict in all_captions:
+        try:
+            fig_type = caption_dict["figType"]
+        except KeyError:
+            return "not found"
+
+        if fig_type == "Figure":
+            try:
+                fig_idx = int(caption_dict["name"])
+            except ValueError:
+                return "not found"
+
+            if fig_idx == idx:
+                return caption_dict["caption"]
+    return "not found"
+
+
+def get_fig_and_subfig_n(img_path: str) -> Tuple[int, int]:
+    fig_n, subfig_and_suffix = img_path.split("_")[-2:]
+    sufig_n = subfig_and_suffix.split(".")[0]
+    return (int(fig_n), int(sufig_n))
+
+
+def sort_human(l):
+    # user Julian (https://stackoverflow.com/questions/3426108/how-to-sort-a-list-of-strings-numerically)
+    convert = lambda text: float(text) if text.isdigit() else text
+    alphanum = lambda key: [convert(c) for c in re.split("([-+]?[0-9]*\.?[0-9]*)", key)]
+    l.sort(key=alphanum)
+    return l
+
+
 class App(ttk.Frame):
     def __init__(self, root: tk.Tk) -> None:
         ttk.Frame.__init__(self)
@@ -34,6 +94,129 @@ class App(ttk.Frame):
         self.dir: str
         self.start: int
         self.n: int
+        self.paper_idx: int = 0
+        self.figure_idx: int = 0
+        self.total_figures: int = 0
+        self.paper_paths: List[str] = []
+        self.fig_comments: List[str] = []
+
+        self.current_paper_data: List[dict] = []
+
+    def _set_folder(self) -> None:
+        self.dir = open_file_dialog_return_fps()
+
+    def _window_confirm(self) -> None:
+        self.start = int(self.start_idx.get())
+        self.n = int(self.n_papers.get())
+        self.window.destroy()
+        self.start_logic(self.dir, self.start, self.n)
+
+    def start_logic(self, folder: str, start_idx: int, n_papers: int) -> None:
+        all_papers = listdir(folder)
+        self.paper_paths = all_papers[start_idx : start_idx + n_papers]
+        self.load_paper(self.paper_paths[0])
+
+    def load_paper(self, path: str) -> None:
+        print(path)
+        metadata_path = f"{self.dir}/{path}/paper_data.json"
+        captions_path = f"{self.dir}/{path}/captions.json"
+        imgs_path = f"{self.dir}/{path}/imgs"
+
+        self.metadata = load_json(metadata_path)
+        self.title_text_var.set(self.metadata["title"])
+        self.abstract_text_var.set(self.metadata["abstract"])
+
+        self.captions = self.load_captions(captions_path)
+        self.img_paths = sort_human(listdir(imgs_path))
+        self.total_figures = len(self.img_paths)
+        self.load_img(f"{self.dir}/{path}/imgs/{self.img_paths[0]}")
+
+    def load_captions(self, captions_path: str) -> List[str]:
+        # assumes no missing figures - wrong assumption
+        captions_dict: List[dict] = load_json(captions_path)
+
+        valid_figures: List[dict] = filter(
+            lambda x: x["figType"] == "Figure", captions_dict
+        )
+        figure_dict = sorted(valid_figures, key=lambda x: int(x["name"]))
+        captions = list(map(lambda x: x["caption"], figure_dict))
+
+        # TODO: make this mapping a dict of figure name to caption so not indexing a list later
+
+        """
+        stop = False
+        i = 0
+        captions = []
+        while stop == False:
+            result = get_caption(captions_dict, i + 1)
+            if result == "not found":
+                stop = True
+            else:
+                captions.append(result)
+                i += 1
+        """
+
+        self.caption_text_var.set(captions[0])
+        return captions
+
+    def get_full_img_path(self, n: int) -> str:
+        path = self.paper_paths[self.paper_idx]
+        return f"{self.dir}/{path}/imgs/{self.img_paths[n]}"
+
+    def load_img(self, img_path: str) -> None:
+        img = Image.open(img_path)
+        h, w = img.height, img.width
+        m_d = max(h, w)
+        sf = MAX_IMG_D / m_d
+        nh, nw = int(h * sf), int(w * sf)
+        img = img.resize((nw, nh))
+
+        self.photo_img = ImageTk.PhotoImage(img)
+        self.img.configure(image=self.photo_img)
+        # self.img.grid(row=0, column=0, sticky="nsew")
+
+    def add_pressed(self) -> None:
+        comment: str = str(self.comments.get())
+        self.fig_comments.append(comment)
+        self.comments.delete(0, tk.END)
+
+    def confirm_pressed(self) -> None:
+        fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
+        is_micrograph = self.micrograph_var.get()
+
+        data: dict
+        if not is_micrograph:
+            data = {"figure": fig, "subfigure": subfig, "isMicrograph": is_micrograph}
+        else:
+            data = {
+                "figure": fig,
+                "subfigure": subfig,
+                "isMicrograph": is_micrograph,
+                "instrument": self.instrument.get(),
+                "material": self.material.get(),
+                "comments": self.fig_comments,
+            }
+        self.current_paper_data.append(data)
+        self.fig_comments = []
+        self.figure_idx += 1
+        print(f"Figure [{self.figure_idx} / {self.total_figures}]")
+
+        if self.figure_idx >= self.total_figures:
+            path = self.paper_paths[self.paper_idx]
+            save_json(f"{self.dir}/{path}/human_label.json", self.current_paper_data)
+            self.paper_idx += 1
+            print(f"Paper [{self.paper_idx} / {self.n}]")
+            self.figure_idx = 0
+            new_path = self.paper_paths[self.paper_idx]
+            self.current_paper_data = []
+            self.load_paper(new_path)
+        else:
+            new_fig_n, new_subfig_n = get_fig_and_subfig_n(
+                self.img_paths[self.figure_idx]
+            )
+            print(new_fig_n, new_subfig_n)
+            self.caption_text_var.set(self.captions[new_fig_n - 1])
+            self.load_img(self.get_full_img_path(self.figure_idx))
 
     def intro_modal(self) -> None:
         self.window = tk.Toplevel(self)
@@ -65,31 +248,27 @@ class App(ttk.Frame):
         )
         self.window_confirm.grid(row=3, column=1, pady=(30, 20))
 
-    def _set_folder(self) -> None:
-        self.dir = open_file_dialog_return_fps()
-
-    def _window_confirm(self) -> None:
-        self.start = int(self.start_idx.get())
-        self.n = int(self.n_papers.get())
-        self.window.destroy()
-        self.start_logic(self.dir, self.start, self.n)
-
-    def start_logic(self, folder: str, start_idx: int, n_papers: int) -> None:
-        all_papers = listdir(folder)
-        self.paper_paths: List[str] = all_papers[start_idx : start_idx + n_papers]
-        print(self.paper_paths)
-
-    def load_paper(self, path: str) -> None:
-        pass
-
     def pack_widgets(self) -> None:
+        self.title_text_var = tk.StringVar(
+            self,
+            value="Systems Microbiology and Engineering of Aerobic-Anaerobic Ammonium Oxidation",
+        )
         self.title = tk.Label(
             self,
-            text="Systems Microbiology and Engineering of Aerobic-Anaerobic Ammonium Oxidation",
+            textvariable=self.title_text_var,
             font=("", 20),
         )
         self.title.grid(row=0, column=0, columnspan=2, sticky="nsew")
-        self.img_frame = ttk.LabelFrame(self, text="FIGURE")  #
+
+        self.img_frame = ttk.LabelFrame(
+            self, text="FIGURE", width=int(HALF_W * 0.9), height=int(HALF_W * 0.9)
+        )
+        self.img_frame.grid_propagate(False)
+        self.img = tk.Label(
+            self.img_frame, width=int(HALF_W * 0.9), height=int(HALF_W * 0.9)
+        )
+        self.img.grid_propagate(False)
+        self.img.grid(row=0, column=0)
         self.img_frame.grid(
             row=1, column=0, rowspan=4, sticky="nsew", padx=PADX, pady=PADY
         )
@@ -131,7 +310,10 @@ class App(ttk.Frame):
         self.micrograph_text = tk.Label(
             self.prop_frame, text="Micrograph:", font=LARGER_FONT
         )
-        self.micrograph = tk.Checkbutton(self.prop_frame, text="Yes", font=LARGER_FONT)
+        self.micrograph_var = tk.BooleanVar(self, value=False)
+        self.micrograph = tk.Checkbutton(
+            self.prop_frame, text="Yes", font=LARGER_FONT, variable=self.micrograph_var
+        )
         self.micrograph_text.grid(row=1, column=0, sticky="w", padx=PADX, pady=PADY)
         self.micrograph.grid(row=1, column=1, sticky="ew")
 
@@ -148,7 +330,7 @@ class App(ttk.Frame):
                 "XCT",
                 "Optical",
                 "Reflected Light",
-                "Other",
+                "Other (type in box)",
             ],
             font=LARGER_FONT,
         )
@@ -169,14 +351,20 @@ class App(ttk.Frame):
             self.prop_frame, text="Comments:", font=LARGER_FONT
         )
         self.comments = tk.Entry(self.prop_frame, font=LARGER_FONT)
-        self.comments_add = tk.Button(self.prop_frame, text="Add", font=LARGER_FONT)
+        self.comments_add = tk.Button(
+            self.prop_frame, text="Add", font=LARGER_FONT, command=self.add_pressed
+        )
 
         self.comments_text.grid(row=4, column=0, sticky="w", padx=PADX, pady=PADY)
         self.comments.grid(row=4, column=1, sticky="ew")
         self.comments_add.grid(row=4, column=2)
 
         self.confirm = tk.Button(
-            self.prop_frame, text="Confirm", font=LARGER_FONT, bg="green"
+            self.prop_frame,
+            text="Confirm",
+            font=LARGER_FONT,
+            bg="green",
+            command=self.confirm_pressed,
         )
         self.confirm.grid(row=5, column=2, sticky="es", padx=(20, 20), pady=(80, 10))
 
