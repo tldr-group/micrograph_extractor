@@ -4,6 +4,7 @@ from PIL import ImageTk, Image
 from tkinter import filedialog as fd
 from os import listdir
 from json import load, dump
+from time import sleep
 
 from typing import Literal, Tuple, List
 
@@ -86,8 +87,10 @@ def sort_human(l):
 class App(ttk.Frame):
     def __init__(self, root: tk.Tk) -> None:
         ttk.Frame.__init__(self)
+
         self.root = root
-        self.root.geometry("800x800")
+        self.root.geometry(f"{2*HALF_W}x{2*HALF_W}")
+        self.root.bind("<Return>", self._enter_pressed)
 
         self.pack_widgets()
         self.intro_modal()
@@ -126,12 +129,16 @@ class App(ttk.Frame):
         self.title_text_var.set(self.metadata["title"])
         self.abstract_text_var.set(self.metadata["abstract"])
 
-        self.captions = self.load_captions(captions_path)
+        self.captions, self.figure_nums = self.load_captions(captions_path)
         self.img_paths = sort_human(listdir(imgs_path))
+        if len(imgs_path) == 0:
+            print("No papers!")
+            self.new_paper()
         self.total_figures = len(self.img_paths)
+
         self.load_img(f"{self.dir}/{path}/imgs/{self.img_paths[0]}")
 
-    def load_captions(self, captions_path: str) -> List[str]:
+    def load_captions(self, captions_path: str) -> Tuple[List[str], List[str]]:
         # assumes no missing figures - wrong assumption
         captions_dict: List[dict] = load_json(captions_path)
 
@@ -139,6 +146,7 @@ class App(ttk.Frame):
             lambda x: x["figType"] == "Figure", captions_dict
         )
         figure_dict = sorted(valid_figures, key=lambda x: int(x["name"]))
+        figure_nums = list(map(lambda x: x["name"], figure_dict))
         captions = list(map(lambda x: x["caption"], figure_dict))
 
         # TODO: make this mapping a dict of figure name to caption so not indexing a list later
@@ -157,7 +165,7 @@ class App(ttk.Frame):
         """
 
         self.caption_text_var.set(captions[0])
-        return captions
+        return captions, figure_nums
 
     def get_full_img_path(self, n: int) -> str:
         path = self.paper_paths[self.paper_idx]
@@ -179,6 +187,9 @@ class App(ttk.Frame):
         comment: str = str(self.comments.get())
         self.fig_comments.append(comment)
         self.comments.delete(0, tk.END)
+
+    def _enter_pressed(self, event=None) -> None:
+        self.confirm_pressed()
 
     def confirm_pressed(self) -> None:
         fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
@@ -202,21 +213,32 @@ class App(ttk.Frame):
         print(f"Figure [{self.figure_idx} / {self.total_figures}]")
 
         if self.figure_idx >= self.total_figures:
-            path = self.paper_paths[self.paper_idx]
-            save_json(f"{self.dir}/{path}/human_label.json", self.current_paper_data)
-            self.paper_idx += 1
-            print(f"Paper [{self.paper_idx} / {self.n}]")
-            self.figure_idx = 0
-            new_path = self.paper_paths[self.paper_idx]
-            self.current_paper_data = []
-            self.load_paper(new_path)
+            self.new_paper()
         else:
             new_fig_n, new_subfig_n = get_fig_and_subfig_n(
                 self.img_paths[self.figure_idx]
             )
-            print(new_fig_n, new_subfig_n)
-            self.caption_text_var.set(self.captions[new_fig_n - 1])
-            self.load_img(self.get_full_img_path(self.figure_idx))
+            caption_idx = self.figure_nums.index(str(new_fig_n))
+            self.caption_text_var.set(self.captions[caption_idx])
+            try:
+                self.load_img(self.get_full_img_path(self.figure_idx))
+            except FileNotFoundError:
+                self.confirm_pressed()
+
+            self.micrograph_var.set(False)
+            self.instrument.set("SEM")
+
+    def new_paper(self) -> None:
+        sleep(0.25)
+        path = self.paper_paths[self.paper_idx]
+        save_json(f"{self.dir}/{path}/human_label.json", self.current_paper_data)
+        self.paper_idx += 1
+        print(f"Paper [{self.paper_idx} / {self.n}]")
+        self.paper_idx += 1
+        self.figure_idx = 0
+        new_path = self.paper_paths[self.paper_idx]
+        self.current_paper_data = []
+        self.load_paper(new_path)
 
     def intro_modal(self) -> None:
         self.window = tk.Toplevel(self)
@@ -366,7 +388,7 @@ class App(ttk.Frame):
             bg="green",
             command=self.confirm_pressed,
         )
-        self.confirm.grid(row=5, column=2, sticky="es", padx=(20, 20), pady=(80, 10))
+        self.confirm.grid(row=5, column=1, sticky="es", padx=(20, 20), pady=(80, 10))
 
         self.prop_frame.grid(row=2, column=1, sticky="nsew", padx=PADX, pady=PADY)
 
@@ -380,4 +402,5 @@ if __name__ == "__main__":
     )
 
     app.grid()
+    app.confirm.grid_propagate(False)
     root.mainloop()
