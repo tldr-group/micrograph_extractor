@@ -200,13 +200,15 @@ def get_caption(all_captions: List[dict], idx: int) -> str:
             fig_type = caption_dict["figType"]
         except KeyError:
             return "not found"
-        try:
-            fig_idx = int(caption_dict["name"])
-        except ValueError:
-            return "not found"
 
-        if fig_type == "Figure" and fig_idx == idx:
-            return caption_dict["caption"]
+        if fig_type == "Figure":
+            try:
+                fig_idx = int(caption_dict["name"])
+            except ValueError:
+                return "not found"
+
+            if fig_idx == idx:
+                return caption_dict["caption"]
     return "not found"
 
 
