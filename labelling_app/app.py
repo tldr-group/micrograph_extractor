@@ -4,7 +4,7 @@ from PIL import ImageTk, Image
 from tkinter import filedialog as fd
 from os import listdir
 from json import load, dump
-from time import sleep
+from time import sleep, time
 
 from typing import Literal, Tuple, List
 
@@ -105,6 +105,8 @@ class App(ttk.Frame):
 
         self.current_paper_data: List[dict] = []
 
+        self.start_t = time()
+
     def _set_folder(self) -> None:
         self.dir = open_file_dialog_return_fps()
 
@@ -195,9 +197,15 @@ class App(ttk.Frame):
         fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
         is_micrograph = self.micrograph_var.get()
 
+        new_t = time()
         data: dict
         if not is_micrograph:
-            data = {"figure": fig, "subfigure": subfig, "isMicrograph": is_micrograph}
+            data = {
+                "figure": fig,
+                "subfigure": subfig,
+                "isMicrograph": is_micrograph,
+                "time": new_t - self.start_t,
+            }
         else:
             data = {
                 "figure": fig,
@@ -206,10 +214,12 @@ class App(ttk.Frame):
                 "instrument": self.instrument.get(),
                 "material": self.material.get(),
                 "comments": self.fig_comments,
+                "time": new_t - self.start_t,
             }
         self.current_paper_data.append(data)
         self.fig_comments = []
         self.figure_idx += 1
+        self.start_t = time()
         print(f"Figure [{self.figure_idx} / {self.total_figures}]")
 
         if self.figure_idx >= self.total_figures:
@@ -227,6 +237,8 @@ class App(ttk.Frame):
 
             self.micrograph_var.set(False)
             self.instrument.set("SEM")
+            self.material.delete(0, tk.END)
+            self.comments.delete(0, tk.END)
 
     def new_paper(self) -> None:
         sleep(0.25)
