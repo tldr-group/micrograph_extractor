@@ -49,6 +49,8 @@ class ArxivScraper(GenericScraper):
         for child in entry_elem:
             if "id" in child.tag:
                 id = child.text
+            elif "title" in child.tag:
+                title = child.text
             elif "summary" in child.tag:
                 abstract = child.text
             elif "published" in child.tag:

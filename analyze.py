@@ -8,7 +8,9 @@ from scrapers.generic import make_folder
 np.random.seed(2189)
 
 
-def train_test_split(dataset_path: str, n_train: int = 500, n_test: int = 2500) -> None:
+def train_test_split(
+    dataset_path: str, n_train: int = 500, n_test: int = 2500, filter_term: str = "none"
+) -> None:
     papers = listdir(f"{dataset_path}/papers")
     n_papers = len(papers)
 
@@ -26,12 +28,18 @@ def train_test_split(dataset_path: str, n_train: int = 500, n_test: int = 2500) 
 
     for i in train_inds:
         paper = papers[i]
+        if filter_term in paper:
+            continue
+
         try:
             copytree(f"{dataset_path}/papers/{paper}", f"{dataset_path}/train/{paper}")
         except FileExistsError:
             pass
     for i in test_inds:
         paper = papers[i]
+        if filter_term in paper:
+            continue
+
         try:
             copytree(f"{dataset_path}/papers/{paper}", f"{dataset_path}/test/{paper}")
         except FileExistsError:
@@ -49,4 +57,4 @@ def detect_composite_image_from_caption(caption: str) -> bool:
 # TODO: add check instrument code based on caption
 
 if __name__ == "__main__":
-    train_test_split("dataset")
+    train_test_split("dataset", n_train=1500, filter_term="arxiv")

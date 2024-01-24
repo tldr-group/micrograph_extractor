@@ -4,6 +4,8 @@ from os import mkdir
 from dataclasses import dataclass, asdict
 from json import dump
 
+# TODO: add an open-access springer nature scraper?
+
 
 @dataclass
 class PaperEntry:
