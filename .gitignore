@@ -168,3 +168,8 @@ dataset/*
 tmp/*
 scratchpad.ipynb
 old/*
+
+
+/micrograph_dataset/
+/micrograph_test/
+test/*
