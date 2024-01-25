@@ -233,6 +233,7 @@ def single_pdf_extract_process(
     out_img_path: str,
     out_data_path: str,
     out_processed_path: str,
+    save_original_figures: bool = True,
 ) -> Tuple[List[str], List[str]]:
     """Given ABSOLUTE path to PDF and ABSOLUTE paths to where to dump the images and caption data (usually .../tmp/),
     call pdffigures2 to extract. Then loop through all extracted images, find which figure they belong to and th
@@ -262,6 +263,9 @@ def single_pdf_extract_process(
         img = Image.open(f"{out_img_path}{fig_path}")
         # Alway split - if it's a single figure it (hopefully) won't split anyway
         split_arrs = split_composite_figure(img)
+        if save_original_figures:
+            img.save(f"{out_processed_path}{filename}_fig_{fig_idx}.jpg")
+
         for i, arr in enumerate(split_arrs):
             img = arr_to_img(arr, "RGB")
             img.save(f"{out_processed_path}{filename}_fig_{fig_idx}_{i}.jpg")

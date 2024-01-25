@@ -5,10 +5,14 @@ from tkinter import filedialog as fd
 from os import listdir
 from json import load, dump
 from time import sleep, time
+from shutil import copyfile
 
 from typing import Literal, Tuple, List
 
 import re
+
+# GOT TO 69 + 10 YESTERDAY
+# got to 70 + 25 TODAY
 
 FONT = ("", 14)
 LARGER_FONT = ("", 16)
@@ -216,6 +220,9 @@ class App(ttk.Frame):
                 "comments": self.fig_comments,
                 "time": new_t - self.start_t,
             }
+            # src = self.get_full_img_path(self.figure_idx)
+            # dest = f"{self.dir}/train_imgs/{self.paper_paths[self.paper_idx]}_fig_{fig}_{subfig}.jpg"
+            # copyfile(src, dest)
         self.current_paper_data.append(data)
         self.fig_comments = []
         self.figure_idx += 1
@@ -285,7 +292,7 @@ class App(ttk.Frame):
     def pack_widgets(self) -> None:
         self.title_text_var = tk.StringVar(
             self,
-            value="Systems Microbiology and Engineering of Aerobic-Anaerobic Ammonium Oxidation",
+            value="Title",
         )
         self.title = tk.Label(
             self,
@@ -310,7 +317,7 @@ class App(ttk.Frame):
         self.caption_frame = ttk.LabelFrame(self, text="CAPTION")
         self.caption_text_var = tk.StringVar(
             self,
-            value="Figure 3. Comparison of bacterial community compositions of bioaggregates sampled from sidestream and mainstream PN/A processes operated at the Eawag experimental hall (Dübendorf, Switzerland) as sequencing batch reactors with high N-loaded anaerobic digester supernatant and with low N-loaded pre-treated municipal wastewater (i.e. organic matter removed beforehand), respectively. In both sidestream and mainstream systems, the AMO genus “Ca. Brocadia” was mainly detected in the biofilms, whereas the AOO genus Nitrosomonas displayed higher relative abundances in the flocs. The NOO genus Nitrospira was mainly detected in flocs at mainstream. The DHO genus Denitratisoma was present in both types of aggregates at sidestream and mainstream. A diversity of heterotrophic organisms and candidate taxa was accompanying the traditional PN/A populations. Saprospiraceae affiliates were abundant, notably in the flocs, and are known to hydrolyse complex carbonaceous substrates. In term of diversity, ca. 30 and 110 operational taxonomic units (OTUs) formed the 75% of the 16S rRNA gene-based amplicon sequencing datasets generated with adaptation to the MiDAS field guide 94 targeting the v4 hypervariable region (Table 1: primer pair 515F / 806R). Taxonomic cutoffs: kingdom (k) > phylum (p) > class (c) > order (o) > family (f) > genus (g) > species (s).",
+            value="Caption",
         )
         self.caption = tk.Label(
             self.caption_frame,
@@ -327,7 +334,7 @@ class App(ttk.Frame):
         self.abstract_frame = ttk.LabelFrame(self, text="ABSTRACT")
         self.abstract_text_var = tk.StringVar(
             self,
-            value="Covalent organic frameworks (COFs) are crystalline, nanoporous materials of interest for various applications. However, current COF synthetic routes lead to insoluble aggregates which hamper processing and prohibit their use in many applications. Here, we report a novel COF synthesis method that produces a stable, homogeneous suspension of crystalline COF nanoparticles. Our approach involves the use of a polar solvent, di-acid catalyst, and slow reagent mixing procedure at elevated temperatures which all together enable access to crystalline COF nanoparticle suspension that does not aggregate or precipitate when kept at elevated temperatures. On cooling, the suspension undergoes a thermoreversible gelation transition to produce crystalline and highly porous COF materials. We demonstrate that this method enables the preparation of COF monoliths, membranes, and films using conventional solution processing techniques. We show that the modified synthesis approach is compatible with various COF chemistries, including both large- and small-pore imine COFs, hydrazone-linked COFs, and COFs with rhombic and hexagonal topology, and in each case, we demonstrate that the final product has excellent crystallinity and porosity. The final materials contain both micro- and macropores, and the total porosity can be tuned through variation of sample annealing. Dynamic light scattering measurements reveal the presence of COF nanoparticles that grow with time at room temperature, transitioning from a homogeneous suspension to a gel. Finally, we prepare imine COF membranes and measure their rejection of polyethylene glycol (PEG) polymers and oligomers, and these measurements exhibit size-dependent rejection of PEG solutes. This work demonstrates a versatile processing strategy to create crystalline and porous COF materials using solution processing techniques and will greatly advance the development of COFs for various applications.",
+            value="Abstract",
         )
         self.abstract = tk.Label(
             self.abstract_frame,
