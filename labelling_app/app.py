@@ -100,7 +100,7 @@ def sort_human(l):
 
 
 InputTypes = Literal["checkbox", "dropdown", "entry", "comment"]
-LabelTypes = Literal["human", "LLM", "regex"]
+LabelTypes = Literal["none", "human", "llm", "regex"]
 
 
 class InputField(ttk.Frame):
@@ -132,8 +132,8 @@ class InputField(ttk.Frame):
         self.evaluate_mode = False
 
         if entry_type == "comment":
-            add_btn = tk.Button(self, text="Add")
-            add_btn.grid(row=0, column=2, sticky="e")
+            self.add_btn = tk.Button(self, text="Add")
+            self.add_btn.grid(row=0, column=2, sticky="e")
             # self.correct_box.grid(row=0, column=3, sticky="e")
         # else:
         # self.correct_box.grid(row=0, column=2, sticky="e")
@@ -180,17 +180,31 @@ class InputField(ttk.Frame):
     def reset(self) -> None:
         if self.entry_type == "checkbox":
             self.var.set(False)
+            self.compare_var.set(False)
         else:
             self.var.set("")
+            self.compare_var.set("")
+        self.correct_var.set(True)
 
-    def set_value(self, value: str | bool) -> None:
-        self.var.set(value)  # type: ignore
-
-    def get_value(self) -> str | bool:
-        if self.entry_type == "checkbox":
-            return bool(self.var.get())
+    def set_value(self, value: str | bool, idx: int = 0) -> None:
+        if idx == 0:
+            self.var.set(value)  # type: ignore
         else:
-            return str(self.var.get())
+            self.compare_var.set(value)
+
+    def get_value(self, idx: int = 0) -> str | bool:
+        var: tk.Variable
+        if idx == 0:
+            var = self.var
+        elif idx == 1:
+            var = self.compare_var
+        elif idx == 2:
+            var = self.correct_var
+
+        if self.entry_type == "checkbox" or idx == 2:
+            return bool(var.get())
+        else:
+            return str(var.get())
 
     def get(self) -> str | bool:
         return self.get_value()
@@ -223,6 +237,7 @@ class App(ttk.Frame):
         self.dir: str
         self.start: int
         self.n: int
+        self.label_mode: LabelTypes = "none"
         self.paper_idx: int = 0
         self.figure_idx: int = 0
         self.total_figures: int = 0
@@ -230,6 +245,7 @@ class App(ttk.Frame):
         self.fig_comments: List[str] = []
 
         self.current_paper_data: List[dict] = []
+        self.current_paper_eval: List[dict] = []
 
         self.start_t = time()
 
@@ -306,9 +322,11 @@ class App(ttk.Frame):
     def _enter_pressed(self, event=None) -> None:
         self.confirm_pressed()
 
-    def confirm_pressed(self) -> None:
-        # fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
-        # TODO: add check if in evaluate mode and save matches to labesl
+    def _view_select_change(self, event) -> None:
+        self.label_mode = self.switch_dropdown.get()
+        self.switch_to_evaluate(self.label_mode)
+
+    def add_label(self) -> None:
         is_micrograph = self.micrograph.get()
 
         new_t = time()
@@ -317,6 +335,8 @@ class App(ttk.Frame):
             data = {
                 "figure": self.figure_idx,
                 "isMicrograph": is_micrograph,
+                "instrument": "none",
+                "material": "none",
                 "time": new_t - self.start_t,
             }
         else:
@@ -329,6 +349,25 @@ class App(ttk.Frame):
                 "time": new_t - self.start_t,
             }
         self.current_paper_data.append(data)
+
+    def add_eval(self) -> None:
+        data = {
+            "figure": self.figure_idx,
+            "isMicrograph_correct": self.micrograph.get_value(2),
+            "instrument_correct": self.instrument.get_value(2),
+            "material_correct": self.instrument.get_value(2),
+        }
+        self.current_paper_eval.append(data)
+
+    def confirm_pressed(self) -> None:
+        # fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
+        # TODO: add check if in evaluate mode and save matches to labesl
+
+        if self.label_mode == "none":
+            self.add_label()
+        else:
+            self.add_eval()
+
         self.fig_comments = []
         self.figure_idx += 1
         self.start_t = time()
@@ -346,33 +385,72 @@ class App(ttk.Frame):
 
             self.micrograph.set_value(False)
             self.instrument.set_value("SEM")
+            self.micrograph.set_value(False, 1)
+            self.instrument.set_value("SEM", 1)
             self.material.reset()
             self.comments.reset()
 
-    def save_labels(self, data: dict, path: str, fname: str = "labels") -> None:
+            if self.label_mode != "none":
+                self.switch_to_evaluate(self.label_mode)
+
+    def save_labels(
+        self, data: dict, path: str, fname: str = "labels", key: str = "human"
+    ) -> None:
         try:
             with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
                 prev_data = load(f)
         except FileNotFoundError:
             prev_data = {}
-        prev_data["human"] = data
+        prev_data[key] = data
         save_json(f"{self.dir}/{path}/{fname}.json", prev_data)
 
     def new_paper(self) -> None:
         sleep(0.25)
         path = self.paper_paths[self.paper_idx]
-        self.save_labels(self.current_paper_data, path)
+        if self.label_mode == "none":
+            self.save_labels(self.current_paper_data, path)
+        else:
+            self.save_labels(
+                self.current_paper_eval, path, key=self.label_mode + "_eval"
+            )
         self.paper_idx += 1
         print(f"Paper [{self.paper_idx} / {self.n}]")
         self.paper_idx += 1
         self.figure_idx = 0
         new_path = self.paper_paths[self.paper_idx]
         self.current_paper_data = []
+        self.current_paper_eval = []
         self.load_paper(new_path)
+        if self.label_mode != "none":
+            self.switch_to_evaluate(self.label_mode)
 
-    def switch_to_evaluate(self) -> None:
-        for e in self.entries:
+    def switch_to_evaluate(self, label_type: LabelTypes) -> None:
+        self.label_mode = label_type
+        if label_type == "none":
+            for i, e in enumerate(self.entries):
+                e.set_evaluate(False)
+            return
+
+        all_label_data = self.load_label_data(
+            label_type, self.paper_paths[self.paper_idx]
+        )
+        fig_label_data = all_label_data[self.figure_idx]
+        data = [
+            fig_label_data["isMicrograph"],
+            fig_label_data["instrument"],
+            fig_label_data["material"],
+        ]
+        for i, e in enumerate(self.entries):
             e.set_evaluate(True)
+            if i < 3:
+                e.set_value(data[i], 1)
+
+    def load_label_data(
+        self, label_type: LabelTypes, path: str, fname: str = "labels"
+    ) -> dict:
+        with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
+            data = load(f)
+        return data[label_type]
 
     def intro_modal(self) -> None:
         self.window = tk.Toplevel(self)
@@ -482,6 +560,8 @@ class App(ttk.Frame):
 
         self.comments = InputField(self.prop_frame, "Comment: ", "comment")
         self.comments.grid(row=4, column=0, columnspan=2, sticky="ew")
+        self.comments.add_btn.config(command=self.add_pressed)
+        # TODO: make the add button work!
 
         self.entries: List[InputField] = [
             self.micrograph,
@@ -491,10 +571,14 @@ class App(ttk.Frame):
         ]
 
         self.switch_text = tk.Label(self.prop_frame, text="Compare:", font=LARGER_FONT)
-        self.switch_text.grid(row=5, column=0, sticky="e")
+        self.switch_text.grid(row=5, column=0, sticky="w")
         self.switch_dropdown = ttk.Combobox(
-            self.prop_frame, values=["None", "LLM", "regex"], font=LARGER_FONT
+            self.prop_frame,
+            values=["none", "llm", "regex"],
+            font=LARGER_FONT,
         )
+        self.switch_dropdown.bind("<<ComboboxSelected>>", self._view_select_change)
+
         self.switch_dropdown.grid(row=5, column=1, sticky="w", padx=(0, 20))
         self.switch_dropdown.current(0)
 
