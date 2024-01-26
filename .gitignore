@@ -171,5 +171,11 @@ old/*
 
 
 /micrograph_dataset/
+/micrograph_isMicrograph_true/
+/isMicrograph_true/
 /micrograph_test/
-test/*
+test.py
+/micrograph_dataset_old/
+/train_ismicrograph_true/
+/train_ismicrograph_false/
+test.ipynb
