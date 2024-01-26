@@ -5,14 +5,18 @@ from tkinter import filedialog as fd
 from os import listdir
 from json import load, dump
 from time import sleep, time
+from shutil import copyfile
 
 from typing import Literal, Tuple, List
 
 import re
 
+# GOT TO 69 + 10 YESTERDAY
+# got to 70 + 25 TODAY
+
 FONT = ("", 14)
 LARGER_FONT = ("", 16)
-HALF_W = 1000
+HALF_W = 700
 MAX_IMG_D = int(HALF_W * 0.7)
 PADX = (20, 20)
 PADY = (10, 10)
@@ -76,12 +80,148 @@ def get_fig_and_subfig_n(img_path: str) -> Tuple[int, int]:
     return (int(fig_n), int(sufig_n))
 
 
+def get_only_figures(img_paths: List[str]) -> List[str]:
+    out_paths = []
+    for path in img_paths:
+        n_underscore = path.count("_")
+        if n_underscore == 2:
+            out_paths.append(path)
+        else:
+            pass
+    return out_paths
+
+
 def sort_human(l):
     # user Julian (https://stackoverflow.com/questions/3426108/how-to-sort-a-list-of-strings-numerically)
     convert = lambda text: float(text) if text.isdigit() else text
     alphanum = lambda key: [convert(c) for c in re.split("([-+]?[0-9]*\.?[0-9]*)", key)]
     l.sort(key=alphanum)
     return l
+
+
+InputTypes = Literal["checkbox", "dropdown", "entry", "comment"]
+LabelTypes = Literal["none", "human", "llm", "regex"]
+
+
+class InputField(ttk.Frame):
+    def __init__(
+        self,
+        parent: ttk.LabelFrame,
+        text: str,
+        entry_type: InputTypes,
+    ) -> None:
+        # TODO: add second duplicate entry box that we set to compare labels
+        ttk.Frame.__init__(self, parent)
+        self.parent = parent
+        self.entry_type: InputTypes = entry_type
+
+        label = tk.Label(self, text=text, font=LARGER_FONT)
+        label.grid(row=0, column=0, sticky="w")
+
+        self.entry, self.var = self.get_entry_widget_and_var(entry_type)
+        self.entry.grid(row=0, column=1, sticky="ew")
+
+        self.compare_entry, self.compare_var = self.get_entry_widget_and_var(entry_type)
+        self.compare_entry["state"] = tk.DISABLED
+
+        self.correct_var = tk.BooleanVar(value=True)
+        self.correct_box = tk.Checkbutton(
+            self, variable=self.correct_var, state=tk.DISABLED
+        )
+
+        self.evaluate_mode = False
+
+        if entry_type == "comment":
+            self.add_btn = tk.Button(self, text="Add")
+            self.add_btn.grid(row=0, column=2, sticky="e")
+            # self.correct_box.grid(row=0, column=3, sticky="e")
+        # else:
+        # self.correct_box.grid(row=0, column=2, sticky="e")
+
+    def get_entry_widget_and_var(
+        self, entry_type: InputTypes
+    ) -> Tuple[tk.Widget, tk.Variable]:
+        var: tk.Variable
+        if entry_type == "entry" or entry_type == "comment":
+            var = tk.StringVar(self, value="")
+            return tk.Entry(self, font=LARGER_FONT, textvariable=var), var
+        elif entry_type == "dropdown":
+            var = tk.StringVar(self, value="SEM")
+            return (
+                ttk.Combobox(
+                    self,
+                    values=[
+                        "SEM",
+                        "TEM",
+                        "AFM",
+                        "STEM",
+                        "XCT",
+                        "Optical",
+                        "Reflected Light",
+                        "Other (type in box)",
+                    ],
+                    font=LARGER_FONT,
+                    textvariable=var,
+                ),
+                var,
+            )
+        else:
+            var = tk.BooleanVar(self)
+            return (
+                tk.Checkbutton(
+                    self,
+                    text="Yes",
+                    font=LARGER_FONT,
+                    variable=var,
+                ),
+                var,
+            )
+
+    def reset(self) -> None:
+        if self.entry_type == "checkbox":
+            self.var.set(False)
+            self.compare_var.set(False)
+        else:
+            self.var.set("")
+            self.compare_var.set("")
+        self.correct_var.set(True)
+
+    def set_value(self, value: str | bool, idx: int = 0) -> None:
+        if idx == 0:
+            self.var.set(value)  # type: ignore
+        else:
+            self.compare_var.set(value)
+
+    def get_value(self, idx: int = 0) -> str | bool:
+        var: tk.Variable
+        if idx == 0:
+            var = self.var
+        elif idx == 1:
+            var = self.compare_var
+        elif idx == 2:
+            var = self.correct_var
+
+        if self.entry_type == "checkbox" or idx == 2:
+            return bool(var.get())
+        else:
+            return str(var.get())
+
+    def get(self) -> str | bool:
+        return self.get_value()
+
+    def set_evaluate(self, value: bool) -> None:
+        self.evaluate_mode = value
+        if self.evaluate_mode == True:
+            self.entry["state"] = tk.NORMAL
+            self.compare_entry["state"] = tk.NORMAL
+            self.correct_box["state"] = tk.NORMAL
+            self.compare_entry.grid(row=0, column=2)
+            self.correct_box.grid(row=0, column=3)
+        else:
+            self.entry["state"] = tk.NORMAL
+            self.correct_box["state"] = tk.DISABLED
+            self.compare_entry.grid_forget()
+            self.correct_box.grid_forget()
 
 
 class App(ttk.Frame):
@@ -97,6 +237,7 @@ class App(ttk.Frame):
         self.dir: str
         self.start: int
         self.n: int
+        self.label_mode: LabelTypes = "none"
         self.paper_idx: int = 0
         self.figure_idx: int = 0
         self.total_figures: int = 0
@@ -104,8 +245,11 @@ class App(ttk.Frame):
         self.fig_comments: List[str] = []
 
         self.current_paper_data: List[dict] = []
+        self.current_paper_eval: List[dict] = []
 
         self.start_t = time()
+
+        # self.switch_to_evaluate()
 
     def _set_folder(self) -> None:
         self.dir = open_file_dialog_return_fps()
@@ -132,7 +276,7 @@ class App(ttk.Frame):
         self.abstract_text_var.set(self.metadata["abstract"])
 
         self.captions, self.figure_nums = self.load_captions(captions_path)
-        self.img_paths = sort_human(listdir(imgs_path))
+        self.img_paths = sort_human(get_only_figures(listdir(imgs_path)))
         if len(imgs_path) == 0:
             print("No papers!")
             self.new_paper()
@@ -142,7 +286,7 @@ class App(ttk.Frame):
 
     def load_captions(self, captions_path: str) -> Tuple[List[str], List[str]]:
         # assumes no missing figures - wrong assumption
-        captions_dict: List[dict] = load_json(captions_path)
+        captions_dict: List[dict] = load_json(captions_path)  # type: ignore
 
         valid_figures: List[dict] = filter(
             lambda x: x["figType"] == "Figure", captions_dict
@@ -153,19 +297,7 @@ class App(ttk.Frame):
 
         # TODO: make this mapping a dict of figure name to caption so not indexing a list later
 
-        """
-        stop = False
-        i = 0
-        captions = []
-        while stop == False:
-            result = get_caption(captions_dict, i + 1)
-            if result == "not found":
-                stop = True
-            else:
-                captions.append(result)
-                i += 1
-        """
-
+        print(figure_nums)
         self.caption_text_var.set(captions[0])
         return captions, figure_nums
 
@@ -183,41 +315,66 @@ class App(ttk.Frame):
 
         self.photo_img = ImageTk.PhotoImage(img)
         self.img.configure(image=self.photo_img)
-        # self.img.grid(row=0, column=0, sticky="nsew")
 
     def add_pressed(self) -> None:
         comment: str = str(self.comments.get())
         self.fig_comments.append(comment)
-        self.comments.delete(0, tk.END)
+        self.comments.reset()
 
     def _enter_pressed(self, event=None) -> None:
         self.confirm_pressed()
 
-    def confirm_pressed(self) -> None:
-        fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
-        is_micrograph = self.micrograph_var.get()
+    def _view_select_change(self, event) -> None:
+        self.label_mode = self.switch_dropdown.get()
+        self.switch_to_evaluate(self.label_mode)
+
+    def add_label(self) -> None:
+        is_micrograph = self.micrograph.get()
 
         new_t = time()
         data: dict
-        if not is_micrograph:
-            data = {
-                "figure": fig,
-                "subfigure": subfig,
-                "isMicrograph": is_micrograph,
-                "time": new_t - self.start_t,
-            }
+        try:
+            if not is_micrograph:
+                data = {
+                    "figure": self.figure_nums[self.figure_idx],
+                    "isMicrograph": is_micrograph,
+                    "instrument": "none",
+                    "material": "none",
+                    "time": new_t - self.start_t,
+                }
+            else:
+                data = {
+                    "figure": self.figure_nums[self.figure_idx],
+                    "isMicrograph": is_micrograph,
+                    "instrument": self.instrument.get(),
+                    "material": self.material.get(),
+                    "comments": self.fig_comments,
+                    "time": new_t - self.start_t,
+                }
+            self.current_paper_data.append(data)
+        except:
+            pass
+
+    def add_eval(self) -> None:
+        data = {
+            "figure": self.figure_idx,
+            "isMicrograph_correct": self.micrograph.get_value(2),
+            "instrument_correct": self.instrument.get_value(2),
+            "material_correct": self.instrument.get_value(2),
+        }
+        self.current_paper_eval.append(data)
+
+    def confirm_pressed(self) -> None:
+        # fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
+        # TODO: add check if in evaluate mode and save matches to labesl
+
+        if self.label_mode == "none":
+            self.add_label()
         else:
-            data = {
-                "figure": fig,
-                "subfigure": subfig,
-                "isMicrograph": is_micrograph,
-                "instrument": self.instrument.get(),
-                "material": self.material.get(),
-                "comments": self.fig_comments,
-                "time": new_t - self.start_t,
-            }
-        self.current_paper_data.append(data)
+            self.add_eval()
+
         self.fig_comments = []
+        # this is completelty wrong if figures are not monotonic.
         self.figure_idx += 1
         self.start_t = time()
         print(f"Figure [{self.figure_idx} / {self.total_figures}]")
@@ -225,32 +382,93 @@ class App(ttk.Frame):
         if self.figure_idx >= self.total_figures:
             self.new_paper()
         else:
-            new_fig_n, new_subfig_n = get_fig_and_subfig_n(
-                self.img_paths[self.figure_idx]
-            )
-            caption_idx = self.figure_nums.index(str(new_fig_n))
+            caption_idx = self.figure_idx
             self.caption_text_var.set(self.captions[caption_idx])
             try:
                 self.load_img(self.get_full_img_path(self.figure_idx))
             except FileNotFoundError:
                 self.confirm_pressed()
 
-            self.micrograph_var.set(False)
-            self.instrument.set("SEM")
-            self.material.delete(0, tk.END)
-            self.comments.delete(0, tk.END)
+            self.micrograph.set_value(False)
+            self.instrument.set_value("SEM")
+            self.micrograph.set_value(False, 1)
+            self.instrument.set_value("SEM", 1)
+            self.material.reset()
+            self.comments.reset()
+
+            if self.label_mode != "none":
+                self.switch_to_evaluate(self.label_mode)
+
+    def save_labels(
+        self, data: dict, path: str, fname: str = "labels", key: str = "human"
+    ) -> None:
+        try:
+            with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
+                prev_data = load(f)
+        except FileNotFoundError:
+            prev_data = {}
+        prev_data[key] = data
+        save_json(f"{self.dir}/{path}/{fname}.json", prev_data)
 
     def new_paper(self) -> None:
         sleep(0.25)
         path = self.paper_paths[self.paper_idx]
-        save_json(f"{self.dir}/{path}/human_label.json", self.current_paper_data)
+        if self.label_mode == "none":
+            self.save_labels(self.current_paper_data, path)
+        else:
+            self.save_labels(
+                self.current_paper_eval, path, key=self.label_mode + "_eval"
+            )
         self.paper_idx += 1
         print(f"Paper [{self.paper_idx} / {self.n}]")
         self.paper_idx += 1
         self.figure_idx = 0
         new_path = self.paper_paths[self.paper_idx]
         self.current_paper_data = []
+        self.current_paper_eval = []
         self.load_paper(new_path)
+        if self.label_mode != "none":
+            self.switch_to_evaluate(self.label_mode)
+
+    def switch_to_evaluate(self, label_type: LabelTypes) -> None:
+        self.label_mode = label_type
+        if label_type == "none":
+            for i, e in enumerate(self.entries):
+                e.set_evaluate(False)
+            return
+
+        all_label_data = self.load_label_data(
+            label_type, self.paper_paths[self.paper_idx]
+        )
+        fig_label_data = all_label_data[self.figure_idx]
+        data = [
+            fig_label_data["isMicrograph"],
+            fig_label_data["instrument"],
+            fig_label_data["material"],
+        ]
+        for i, e in enumerate(self.entries):
+            e.set_evaluate(True)
+            if i < 3:
+                e.set_value(data[i], 1)
+
+        all_label_data = self.load_label_data("human", self.paper_paths[self.paper_idx])
+        fig_label_data = all_label_data[self.figure_idx]
+        data = [
+            fig_label_data["isMicrograph"],
+            fig_label_data["instrument"],
+            fig_label_data["material"],
+        ]
+        for i, e in enumerate(self.entries):
+            e.set_evaluate(True)
+            if i < 3:
+                e.set_value(data[i], 0)
+
+    def load_label_data(
+        self, label_type: LabelTypes, path: str, fname: str = "labels"
+    ) -> dict:
+        with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
+            data = load(f)
+        return data[label_type]
 
     def intro_modal(self) -> None:
         self.window = tk.Toplevel(self)
@@ -285,7 +503,7 @@ class App(ttk.Frame):
     def pack_widgets(self) -> None:
         self.title_text_var = tk.StringVar(
             self,
-            value="Systems Microbiology and Engineering of Aerobic-Anaerobic Ammonium Oxidation",
+            value="Title",
         )
         self.title = tk.Label(
             self,
@@ -301,7 +519,6 @@ class App(ttk.Frame):
         self.img = tk.Label(
             self.img_frame, width=int(HALF_W * 0.9), height=int(HALF_W * 0.9)
         )
-        self.img.grid_propagate(False)
         self.img.grid(row=0, column=0)
         self.img_frame.grid(
             row=1, column=0, rowspan=4, sticky="nsew", padx=PADX, pady=PADY
@@ -310,7 +527,7 @@ class App(ttk.Frame):
         self.caption_frame = ttk.LabelFrame(self, text="CAPTION")
         self.caption_text_var = tk.StringVar(
             self,
-            value="Figure 3. Comparison of bacterial community compositions of bioaggregates sampled from sidestream and mainstream PN/A processes operated at the Eawag experimental hall (Dübendorf, Switzerland) as sequencing batch reactors with high N-loaded anaerobic digester supernatant and with low N-loaded pre-treated municipal wastewater (i.e. organic matter removed beforehand), respectively. In both sidestream and mainstream systems, the AMO genus “Ca. Brocadia” was mainly detected in the biofilms, whereas the AOO genus Nitrosomonas displayed higher relative abundances in the flocs. The NOO genus Nitrospira was mainly detected in flocs at mainstream. The DHO genus Denitratisoma was present in both types of aggregates at sidestream and mainstream. A diversity of heterotrophic organisms and candidate taxa was accompanying the traditional PN/A populations. Saprospiraceae affiliates were abundant, notably in the flocs, and are known to hydrolyse complex carbonaceous substrates. In term of diversity, ca. 30 and 110 operational taxonomic units (OTUs) formed the 75% of the 16S rRNA gene-based amplicon sequencing datasets generated with adaptation to the MiDAS field guide 94 targeting the v4 hypervariable region (Table 1: primer pair 515F / 806R). Taxonomic cutoffs: kingdom (k) > phylum (p) > class (c) > order (o) > family (f) > genus (g) > species (s).",
+            value="Caption",
         )
         self.caption = tk.Label(
             self.caption_frame,
@@ -327,7 +544,7 @@ class App(ttk.Frame):
         self.abstract_frame = ttk.LabelFrame(self, text="ABSTRACT")
         self.abstract_text_var = tk.StringVar(
             self,
-            value="Covalent organic frameworks (COFs) are crystalline, nanoporous materials of interest for various applications. However, current COF synthetic routes lead to insoluble aggregates which hamper processing and prohibit their use in many applications. Here, we report a novel COF synthesis method that produces a stable, homogeneous suspension of crystalline COF nanoparticles. Our approach involves the use of a polar solvent, di-acid catalyst, and slow reagent mixing procedure at elevated temperatures which all together enable access to crystalline COF nanoparticle suspension that does not aggregate or precipitate when kept at elevated temperatures. On cooling, the suspension undergoes a thermoreversible gelation transition to produce crystalline and highly porous COF materials. We demonstrate that this method enables the preparation of COF monoliths, membranes, and films using conventional solution processing techniques. We show that the modified synthesis approach is compatible with various COF chemistries, including both large- and small-pore imine COFs, hydrazone-linked COFs, and COFs with rhombic and hexagonal topology, and in each case, we demonstrate that the final product has excellent crystallinity and porosity. The final materials contain both micro- and macropores, and the total porosity can be tuned through variation of sample annealing. Dynamic light scattering measurements reveal the presence of COF nanoparticles that grow with time at room temperature, transitioning from a homogeneous suspension to a gel. Finally, we prepare imine COF membranes and measure their rejection of polyethylene glycol (PEG) polymers and oligomers, and these measurements exhibit size-dependent rejection of PEG solutes. This work demonstrates a versatile processing strategy to create crystalline and porous COF materials using solution processing techniques and will greatly advance the development of COFs for various applications.",
+            value="Abstract",
         )
         self.abstract = tk.Label(
             self.abstract_frame,
@@ -341,57 +558,47 @@ class App(ttk.Frame):
 
         self.prop_frame = ttk.LabelFrame(self)
 
-        self.micrograph_text = tk.Label(
-            self.prop_frame, text="Micrograph:", font=LARGER_FONT
-        )
-        self.micrograph_var = tk.BooleanVar(self, value=False)
-        self.micrograph = tk.Checkbutton(
-            self.prop_frame, text="Yes", font=LARGER_FONT, variable=self.micrograph_var
-        )
-        self.micrograph_text.grid(row=1, column=0, sticky="w", padx=PADX, pady=PADY)
-        self.micrograph.grid(row=1, column=1, sticky="ew")
+        for i in range(5):
+            self.prop_frame.columnconfigure(i, weight=1)
+            self.prop_frame.rowconfigure(i, weight=1)
 
-        self.instrument_text = tk.Label(
-            self.prop_frame, text="Instrument:", font=LARGER_FONT
+        self.micrograph = InputField(self.prop_frame, "Micrograph: ", "checkbox")
+        self.micrograph.grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="ew",
         )
-        self.instrument = ttk.Combobox(
+
+        self.instrument = InputField(self.prop_frame, "Instrument: ", "dropdown")
+        self.instrument.grid(row=2, column=0, columnspan=2, sticky="ew")
+
+        self.material = InputField(self.prop_frame, "Material: ", "entry")
+        self.material.grid(row=3, column=0, columnspan=2, sticky="ew")
+
+        self.comments = InputField(self.prop_frame, "Comment: ", "comment")
+        self.comments.grid(row=4, column=0, columnspan=2, sticky="ew")
+        self.comments.add_btn.config(command=self.add_pressed)
+        # TODO: make the add button work!
+
+        self.entries: List[InputField] = [
+            self.micrograph,
+            self.instrument,
+            self.material,
+            self.comments,
+        ]
+
+        self.switch_text = tk.Label(self.prop_frame, text="Compare:", font=LARGER_FONT)
+        self.switch_text.grid(row=5, column=0, sticky="w")
+        self.switch_dropdown = ttk.Combobox(
             self.prop_frame,
-            values=[
-                "SEM",
-                "TEM",
-                "AFM",
-                "STEM",
-                "XCT",
-                "Optical",
-                "Reflected Light",
-                "Other (type in box)",
-            ],
+            values=["none", "llm", "regex"],
             font=LARGER_FONT,
         )
-        self.instrument.current(0)
+        self.switch_dropdown.bind("<<ComboboxSelected>>", self._view_select_change)
 
-        self.instrument_text.grid(row=2, column=0, sticky="w", padx=PADX, pady=PADY)
-        self.instrument.grid(row=2, column=1, sticky="ew")
-
-        self.material_text = tk.Label(
-            self.prop_frame, text="Material:", font=LARGER_FONT
-        )
-        self.material = tk.Entry(self.prop_frame, font=LARGER_FONT)
-
-        self.material_text.grid(row=3, column=0, sticky="w", padx=PADX, pady=PADY)
-        self.material.grid(row=3, column=1, sticky="ew")
-
-        self.comments_text = tk.Label(
-            self.prop_frame, text="Comments:", font=LARGER_FONT
-        )
-        self.comments = tk.Entry(self.prop_frame, font=LARGER_FONT)
-        self.comments_add = tk.Button(
-            self.prop_frame, text="Add", font=LARGER_FONT, command=self.add_pressed
-        )
-
-        self.comments_text.grid(row=4, column=0, sticky="w", padx=PADX, pady=PADY)
-        self.comments.grid(row=4, column=1, sticky="ew")
-        self.comments_add.grid(row=4, column=2)
+        self.switch_dropdown.grid(row=5, column=1, sticky="w", padx=(0, 20))
+        self.switch_dropdown.current(0)
 
         self.confirm = tk.Button(
             self.prop_frame,
@@ -400,7 +607,7 @@ class App(ttk.Frame):
             bg="green",
             command=self.confirm_pressed,
         )
-        self.confirm.grid(row=5, column=1, sticky="es", padx=(20, 20), pady=(80, 10))
+        self.confirm.grid(row=5, column=2, sticky="es", padx=(20, 20))
 
         self.prop_frame.grid(row=2, column=1, sticky="nsew", padx=PADX, pady=PADY)
 
@@ -414,5 +621,4 @@ if __name__ == "__main__":
     )
 
     app.grid()
-    app.confirm.grid_propagate(False)
     root.mainloop()

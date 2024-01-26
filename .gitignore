@@ -175,7 +175,10 @@ old/*
 /isMicrograph_true/
 /micrograph_test/
 test.py
+<<<<<<< HEAD
 /micrograph_dataset_old/
 /train_ismicrograph_true/
 /train_ismicrograph_false/
 test.ipynb
+=======
+>>>>>>> 94c429de40683380bdd32ab0074e75ad5a638afc
