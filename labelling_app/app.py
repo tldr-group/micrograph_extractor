@@ -16,7 +16,7 @@ import re
 
 FONT = ("", 14)
 LARGER_FONT = ("", 16)
-HALF_W = 1000
+HALF_W = 700
 MAX_IMG_D = int(HALF_W * 0.7)
 PADX = (20, 20)
 PADY = (10, 10)
@@ -296,6 +296,8 @@ class App(ttk.Frame):
         captions = list(map(lambda x: x["caption"], figure_dict))
 
         # TODO: make this mapping a dict of figure name to caption so not indexing a list later
+
+        print(figure_nums)
         self.caption_text_var.set(captions[0])
         return captions, figure_nums
 
@@ -331,24 +333,27 @@ class App(ttk.Frame):
 
         new_t = time()
         data: dict
-        if not is_micrograph:
-            data = {
-                "figure": self.figure_idx,
-                "isMicrograph": is_micrograph,
-                "instrument": "none",
-                "material": "none",
-                "time": new_t - self.start_t,
-            }
-        else:
-            data = {
-                "figure": self.figure_idx,
-                "isMicrograph": is_micrograph,
-                "instrument": self.instrument.get(),
-                "material": self.material.get(),
-                "comments": self.fig_comments,
-                "time": new_t - self.start_t,
-            }
-        self.current_paper_data.append(data)
+        try:
+            if not is_micrograph:
+                data = {
+                    "figure": self.figure_nums[self.figure_idx],
+                    "isMicrograph": is_micrograph,
+                    "instrument": "none",
+                    "material": "none",
+                    "time": new_t - self.start_t,
+                }
+            else:
+                data = {
+                    "figure": self.figure_nums[self.figure_idx],
+                    "isMicrograph": is_micrograph,
+                    "instrument": self.instrument.get(),
+                    "material": self.material.get(),
+                    "comments": self.fig_comments,
+                    "time": new_t - self.start_t,
+                }
+            self.current_paper_data.append(data)
+        except:
+            pass
 
     def add_eval(self) -> None:
         data = {
@@ -369,6 +374,7 @@ class App(ttk.Frame):
             self.add_eval()
 
         self.fig_comments = []
+        # this is completelty wrong if figures are not monotonic.
         self.figure_idx += 1
         self.start_t = time()
         print(f"Figure [{self.figure_idx} / {self.total_figures}]")
@@ -376,7 +382,7 @@ class App(ttk.Frame):
         if self.figure_idx >= self.total_figures:
             self.new_paper()
         else:
-            caption_idx = self.figure_nums.index(str(self.figure_idx))
+            caption_idx = self.figure_idx
             self.caption_text_var.set(self.captions[caption_idx])
             try:
                 self.load_img(self.get_full_img_path(self.figure_idx))
@@ -444,6 +450,18 @@ class App(ttk.Frame):
             e.set_evaluate(True)
             if i < 3:
                 e.set_value(data[i], 1)
+
+        all_label_data = self.load_label_data("human", self.paper_paths[self.paper_idx])
+        fig_label_data = all_label_data[self.figure_idx]
+        data = [
+            fig_label_data["isMicrograph"],
+            fig_label_data["instrument"],
+            fig_label_data["material"],
+        ]
+        for i, e in enumerate(self.entries):
+            e.set_evaluate(True)
+            if i < 3:
+                e.set_value(data[i], 0)
 
     def load_label_data(
         self, label_type: LabelTypes, path: str, fname: str = "labels"
