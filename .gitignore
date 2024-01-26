@@ -172,4 +172,4 @@ old/*
 
 /micrograph_dataset/
 /micrograph_test/
-test/*
+test.py
