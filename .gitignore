@@ -175,6 +175,10 @@ old/*
 /isMicrograph_true/
 /micrograph_test/
 test.py
+prompts.txt
+/micrograph_isMicrograph_false/
+run_vision_model.py
+
 <<<<<<< HEAD
 /micrograph_dataset_old/
 /train_ismicrograph_true/
