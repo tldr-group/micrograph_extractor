@@ -171,18 +171,10 @@ old/*
 
 
 /micrograph_dataset/
-/micrograph_isMicrograph_true/
-/isMicrograph_true/
 /micrograph_test/
-test.py
-prompts.txt
-/micrograph_isMicrograph_false/
-run_vision_model.py
-
-<<<<<<< HEAD
-/micrograph_dataset_old/
 /train_ismicrograph_true/
 /train_ismicrograph_false/
 test.ipynb
-=======
->>>>>>> 94c429de40683380bdd32ab0074e75ad5a638afc
+test.py
+prompts.txt
+run_vision_model.py
