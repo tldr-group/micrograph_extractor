@@ -111,83 +111,81 @@ def process_json(doi_path):
     if os.path.exists(output_file):
         os.remove(output_file)
 
+    new_data = []
     for item in data:
-        img_paths = item.get('img_path', [])# img_paths
-        figure = item.get('figure',[]) # figure
-        abstract = item.get('abstract', []) # abstract
-        captions = item.get('captions', []) # captions
+        try:
+            img_paths = item.get('img_path', [])# img_paths
+            figure = item.get('figure',[]) # figure
+            abstract = item.get('abstract', []) # abstract
+            captions = item.get('captions', []) # captions
 
-        abstract_escaped = repr(abstract)
-        captions_escaped = repr(captions)
-        user_message_1 = "Is this figure a micrograph? Answer it with single yes or no, without additional text"
-        system_message = """
-        You are an expert materials scientist working on micrographs. The first image is a main image is taken from a research paper. The second image is a micrograph cropped from the main image. 
+            abstract_escaped = repr(abstract)
+            captions_escaped = repr(captions)
+            user_message_1 = "Is this figure a micrograph? Answer it with single yes or no, without additional text"
+            system_message = """
+            You are an expert materials scientist working on micrographs. The first image is a main image is taken from a research paper. The second image might be a micrograph. It is cropped from the main image. 
 
-        Focus on the abstract of the paper, captions, and the content of these images. Answer the questions below in JSON entries without additional text. 
-        1.Do you think there is a micrograph present in this figure? Answer with a single 'true' or 'false'.
-        2.What technique (e.g., SEM, TEM) was used to create the micrograph in the cropped image? Provide a brief answer, such as 'SEM' or 'Optical Microscopy'.
-        3.What material is shown in the micrograph? Provide a short description, like 'NMC 811 cathode'.
-        4.If there are any interesting things about the micrograph, like specific processing conditions or anomalies, please put these in a list of single phrases (e.g ['heat-treated, 'cracked', 'sintered']). 
+            Focus on the abstract of the paper, captions, and the content of these images. Answer the questions below in JSON entries without additional text. 
+            1.Do you think the cropped image is a micrograph? Answer with a single 'true' or 'false'.
+            2.What technique (e.g., SEM, TEM) was used to create the micrograph in the cropped image? Provide a brief answer, such as 'SEM' or 'Optical Microscopy'.
+            3.What material is shown in the micrograph? Provide a short description, like 'NMC 811 cathode'.
+            4.If there are any interesting things about the micrograph, like specific processing conditions or anomalies, please put these in a list of single phrases (e.g ['heat-treated, 'cracked', 'sintered']). 
 
-        Here's an example of the JSON output format. 
+            Here's an example of the JSON output format. 
 
-        {
-        "isMicrograph": "true",
-        "instrument": "Technique",
-        "material": "Description",
-        "comments": ["comment1", "comment2", "comment3"]
-            }
-
-        IMPORTANT: The answer should only contain pure JSON data.
-        """
-        paper_information = f""" The abstract is: {abstract_escaped}, and the captions are: {captions_escaped}"""
-        user_message_2 = system_message + paper_information
-
-        # 处理img_paths列表
-        for img_path in img_paths[1:]:
-            response_1 = get_completion_single_image(img_path, user_message_1)
-            new_data = []
-
-            # 根据response_1的值处理
-            if re.search(r'\bno\b', response_1, re.IGNORECASE):
-                new_data = {
-                    'figure': figure,
-                    'subfigure': get_subfigure(img_path),
-                    'isMicrograph': 'false'
-                }
-            elif re.search(r'\byes\b', response_1, re.IGNORECASE):
-                response_2 = get_completion_multiple_images([img_paths[0], img_path], user_message_2)
-                response_json = extract_json_from_response(response_2)
-
-                # 先创建一个新的字典，包含你想要放在前面的字段
-                new_fields = {
-                    'figure': figure,
-                    'subfigure': get_subfigure(img_path)
+            {
+            "isMicrograph": "true",
+            "instrument": "Technique",
+            "material": "Description",
+            "comments": ["comment1", "comment2", "comment3"]
                 }
 
-                # 然后更新这个新字典与response_json的内容
-                new_fields.update(response_json)
+            IMPORTANT: The answer should only contain pure JSON data.
+            """
+            paper_information = f""" The abstract is: {abstract_escaped}, and the captions are: {captions_escaped}"""
+            user_message_2 = system_message + paper_information
 
-                # 将更新后的字典添加到new_data
-                new_data.append(new_fields)           
+            # 处理img_paths列表
+            for img_path in img_paths[1:]:
+                response_1 = get_completion_single_image(img_path, user_message_1)
 
-            if new_data:
-                    # If the file already exists, read and update the data; if not, create a new list
-                if os.path.exists(output_file):
-                    with open(output_file, 'r') as file:
-                        try:
-                            data = json.load(file)
-                        except json.JSONDecodeError:
-                            data = []
-                else:
-                    data = []
+                # 根据response_1的值处理
+                if re.search(r'\bno\b', response_1, re.IGNORECASE):
+                    new_fields = {
+                        'figure': figure,
+                        'subfigure': get_subfigure(img_path),
+                        'isMicrograph': 'false'
+                    }
+                    if new_fields:
+                        new_data.append(new_fields)
 
-                # Append the new data to the list
-                data.append(new_data)
+                elif re.search(r'\byes\b', response_1, re.IGNORECASE):
+                    response_2 = get_completion_multiple_images([img_paths[0], img_path], user_message_2)
+                    response_json = extract_json_from_response(response_2)
 
-                # Write the updated data back to the file
-                with open(output_file, 'w') as file:
-                    json.dump(data, file, indent=4)
+                    # 先创建一个新的字典，包含你想要放在前面的字段
+                    new_fields = {
+                        'figure': figure,
+                        'subfigure': get_subfigure(img_path)
+                    }
+
+                    # 然后更新这个新字典与response_json的内容
+                    new_fields.update(response_json)
+
+                    # 将更新后的字典添加到new_data
+                    if new_fields:
+                        new_data.append(new_fields)   
+
+        except Exception as e:
+            # 如果处理item时出现错误，则将错误信息写入错误文件
+            error_log_path = os.path.join(doi_path, 'error_log.txt')
+            with open(error_log_path, 'a') as error_file:
+                error_message = f"Error processing item in {doi_path}: {e}\n{traceback.format_exc()}"
+                error_file.write(error_message)                       
+
+    if new_data:
+        with open(output_file, 'w') as file:
+            json.dump(new_data, file, indent=4)
 
     
 import os
