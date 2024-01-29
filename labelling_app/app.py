@@ -85,14 +85,18 @@ def get_only_figures(img_paths: List[str]) -> List[str]:
     for path in img_paths:
         n_underscore = path.count("_")
         if n_underscore == 2:
-            out_paths.append(path)
+            val = int(path.split("_")[-1].split(".")[0])
+            out_paths.append((path, val))
         else:
             pass
-    return out_paths
+    correct_order = sorted(out_paths, key=lambda x: x[1])
+    paths = [x[0] for x in correct_order]
+    return paths
 
 
 def sort_human(l):
     # user Julian (https://stackoverflow.com/questions/3426108/how-to-sort-a-list-of-strings-numerically)
+    # not working
     convert = lambda text: float(text) if text.isdigit() else text
     alphanum = lambda key: [convert(c) for c in re.split("([-+]?[0-9]*\.?[0-9]*)", key)]
     l.sort(key=alphanum)
@@ -276,7 +280,8 @@ class App(ttk.Frame):
         self.abstract_text_var.set(self.metadata["abstract"])
 
         self.captions, self.figure_nums = self.load_captions(captions_path)
-        self.img_paths = sort_human(get_only_figures(listdir(imgs_path)))
+        self.img_paths = get_only_figures(listdir(imgs_path))
+        print(self.img_paths)
         if len(imgs_path) == 0:
             print("No papers!")
             self.new_paper()
@@ -420,7 +425,9 @@ class App(ttk.Frame):
                 self.current_paper_eval, path, key=self.label_mode + "_eval"
             )
         self.paper_idx += 1
-        print(f"Paper [{self.paper_idx} / {self.n}]")
+        print(
+            f"Paper {self.start + self.paper_idx}, {self.paper_idx / self.n:.3f}% done"
+        )
         self.paper_idx += 1
         self.figure_idx = 0
         new_path = self.paper_paths[self.paper_idx]
