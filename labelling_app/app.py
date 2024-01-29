@@ -420,7 +420,9 @@ class App(ttk.Frame):
                 self.current_paper_eval, path, key=self.label_mode + "_eval"
             )
         self.paper_idx += 1
-        print(f"Paper [{self.paper_idx} / {self.n}]")
+        print(
+            f"Paper {self.start + self.paper_idx}, {self.paper_idx / self.n:.3f}% done"
+        )
         self.paper_idx += 1
         self.figure_idx = 0
         new_path = self.paper_paths[self.paper_idx]
