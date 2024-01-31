@@ -4,6 +4,8 @@ import os
 import json
 from gpt_utils import *
 
+# TODO: only accept "figType": "Figure", add "llm" field
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai.api_key)
 

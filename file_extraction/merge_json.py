@@ -27,7 +27,7 @@ def process_folder(doi_folder):
         figure_number = figure_info['figure']
         
         # Find matching caption
-        caption = next((item['caption'] for item in captions_data if item['name'] == figure_number), None)
+        caption = next((item['caption'] for item in captions_data if item['name'] == figure_number and item.get('figType') == "Figure"), None)
 
         # Correctly formulating the regex pattern
         pattern = re.compile(f"captions_fig_{figure_number}(_\\d+)?\\.jpg")
@@ -64,4 +64,4 @@ def traverse_and_process(base_folder):
             json.dump(result, file, indent=4)
 
 # Example usage
-traverse_and_process("./micrograph_test/train")
+traverse_and_process("./train_ismicrograph_true")
