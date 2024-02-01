@@ -384,6 +384,12 @@ class App(ttk.Frame):
         print(f"Figure [{self.figure_idx} / {self.total_figures}]")
 
         if self.figure_idx >= self.total_figures:
+            self.micrograph.set_value(False)
+            self.instrument.set_value("SEM")
+            self.micrograph.set_value(False, 1)
+            self.instrument.set_value("SEM", 1)
+            self.material.reset()
+            self.comments.reset()
             self.new_paper()
         else:
             caption_idx = self.figure_idx
