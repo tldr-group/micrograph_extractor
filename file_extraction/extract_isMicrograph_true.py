@@ -104,12 +104,12 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
 # copy_json_files(source_folder, target_folder)
 
 is_micrograph = "true"    
-target_folder_base = "./train_ismicrograph_true"             
-train_folder = './micrograph_dataset/train' 
+target_folder_base = "./train_ismicrograph_true_new"             
+train_folder = './micrograph_dataset_new/train' 
 process_micrograph_images(target_folder_base,train_folder,is_micrograph)
 
 is_micrograph = "false"    
-target_folder_base = "./train_ismicrograph_false"             
-train_folder = './micrograph_dataset/train' 
+target_folder_base = "./train_ismicrograph_false_new"             
+train_folder = './micrograph_dataset_new/train' 
 process_micrograph_images(target_folder_base,train_folder,is_micrograph)
 
