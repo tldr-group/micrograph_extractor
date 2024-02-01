@@ -429,7 +429,7 @@ class App(ttk.Frame):
             self.save_labels(
                 self.current_paper_eval, path, key=self.label_mode + "_eval"
             )
-        self.paper_idx += 1
+
         print(
             f"Paper {self.start + self.paper_idx}, {self.paper_idx / self.n:.3f}% done"
         )
