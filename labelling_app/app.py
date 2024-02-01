@@ -11,8 +11,7 @@ from typing import Literal, Tuple, List
 
 import re
 
-# GOT TO 69 + 10 YESTERDAY
-# got to 70 + 25 TODAY
+# at 99 today
 
 FONT = ("", 14)
 LARGER_FONT = ("", 16)
