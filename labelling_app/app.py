@@ -11,8 +11,7 @@ from typing import Literal, Tuple, List
 
 import re
 
-# GOT TO 69 + 10 YESTERDAY
-# got to 70 + 25 TODAY
+# at 99 today
 
 FONT = ("", 14)
 LARGER_FONT = ("", 16)
@@ -385,6 +384,12 @@ class App(ttk.Frame):
         print(f"Figure [{self.figure_idx} / {self.total_figures}]")
 
         if self.figure_idx >= self.total_figures:
+            self.micrograph.set_value(False)
+            self.instrument.set_value("SEM")
+            self.micrograph.set_value(False, 1)
+            self.instrument.set_value("SEM", 1)
+            self.material.reset()
+            self.comments.reset()
             self.new_paper()
         else:
             caption_idx = self.figure_idx
@@ -424,7 +429,7 @@ class App(ttk.Frame):
             self.save_labels(
                 self.current_paper_eval, path, key=self.label_mode + "_eval"
             )
-        self.paper_idx += 1
+
         print(
             f"Paper {self.start + self.paper_idx}, {self.paper_idx / self.n:.3f}% done"
         )
