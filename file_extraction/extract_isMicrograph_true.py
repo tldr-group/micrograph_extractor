@@ -53,14 +53,15 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
             continue
 
         # JSON file path
-        json_file_path = os.path.join(doi_folder, "llm_label_gpt3-5.json")
+        json_file_path = os.path.join(doi_folder, "labels.json")
         captions_json_path = os.path.join(doi_folder, "captions.json")
         paper_data_json_path = os.path.join(doi_folder, "paper_data.json")
 
         # check if JSON file exists
         if os.path.exists(json_file_path):
             with open(json_file_path, 'r') as json_file:
-                data = json.load(json_file)
+                loaded_json = json.load(json_file)
+                data = loaded_json.get("llm", [])
 
                 # iterate through all items in JSON file
                 extracted_data = [] 
@@ -79,10 +80,11 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
                             os.makedirs(target_imgs_folder, exist_ok=True)
                             for img_path in figure_img_paths:
                                 shutil.copy(img_path, target_imgs_folder)
-
+                
                 # only save json file if there is at least one item
                 if extracted_data:
                     target_doi_folder = os.path.join(target_folder_base, doi)
+                    print(target_doi_folder)
                     os.makedirs(target_doi_folder, exist_ok=True)
                     
                     # save extracted data to json file
@@ -100,6 +102,11 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
 # source_folder = './micrograph_dataset/train'  # Source folder path
 # target_folder = './train'  # Target folder path
 # copy_json_files(source_folder, target_folder)
+
+is_micrograph = "true"    
+target_folder_base = "./train_ismicrograph_true"             
+train_folder = './micrograph_dataset/train' 
+process_micrograph_images(target_folder_base,train_folder,is_micrograph)
 
 is_micrograph = "false"    
 target_folder_base = "./train_ismicrograph_false"             

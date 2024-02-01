@@ -4,6 +4,8 @@ import os
 import json
 from gpt_utils import *
 
+# TODO: only accept "figType": "Figure", add "llm" field
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai.api_key)
 
@@ -37,23 +39,20 @@ def assistant(abstract, captions):
     XCT: X-ray Tomography,
     AFM: Atomic Force Microscopy,
     ConfocalMicroscopy: Confocal Microscopy,
-    Nanomicroscopy: Nanomicroscopy,
-    UVMicroscopy: Ultraviolet Microscopy,
-    IRM: Infrared Microscopy,
-    EPMA: Electron Probe Microanalysis,
-    FluorescenceMicroscopy: Fluorescence Microscopy
+    Nanomicroscopy: Nanomicroscopy
+    ...
 
 
-    Focus on both abstract and caption of a figure from a paper, answer these questions in a JSON format:
-    1.Do you think there is a micrograph present in this figure? Answer with a single 'true' or 'false'.
-    2.If a micrograph is present, which technique (SEM, TEM, etc.) was used to produce the micrograph? Answer with a single acronym (e.g., 'SEM') or phrase ('Optical Microscopy'). If not present, leave the answer blank.
-    3.What material does the micrograph show? Answer this question in a single phrase, like 'NMC 811 cathode'. If not present, leave the answer blank.
-    4.If there are any interesting things about the micrograph, like specific processing conditions or anomalies, please put these in a list of single phrases (e.g ['heat-treated, 'cracked', 'sintered']). If not present, leave the answer blank.
+    Given abstract and caption of the figure from an academic paper, answer these questions in a JSON format:
+    1.Is there a micrograph in this figure? Respond with 'true' or 'false'
+    2.If a micrograph is present, identify all the techniques used (e.g., SEM, TEM, Optical Microscopy) of the micrograph(s)
+    3.If a micrograph is present, list all materials featured in the micrographs (e.g., 'NMC 811 cathode' or 'Insulin aggregates', 'Cobalt')
+    4.If there are any interesting things about the micrograph, like specific processing conditions or anomalies, please put these in a list of single phrases (e.g ['heat-treated, 'cracked', 'sintered']). 
     
     If there is a micrograph in the figure, ensure that the output is in JSON format with the fields "isMicrograph", "instrument", "material" and 'comments'. 
     If there is no micrograph in the figure, ensure that the output is in JSON format only with the fields "isMicrograph".
     
-    IMPORTANT: It should only contain pure JSON data and should not include any Markdown syntax or other non-JSON content.
+    IMPORTANT: It should only contain pure JSON data and should not include any other non-JSON content.
 
     Here's an example of how the JSON output should look with micrograph present:
 
@@ -88,7 +87,10 @@ def assistant(abstract, captions):
 
 def process_folder(base_path):
     error_log_path = os.path.join(base_path, 'error_log.txt')
-    for folder in os.listdir(base_path):
+    folders = [f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f))]
+    total_folders = len(folders)
+
+    for i, folder in enumerate(folders):
         folder_path = os.path.join(base_path, folder)
         if os.path.isdir(folder_path):
             print(f"Start processing: {folder}")
@@ -112,7 +114,7 @@ def process_folder(base_path):
                     response_data['figure'] = name
                     llm_label_data.append(response_data)
 
-                with open(os.path.join(folder_path, 'llm_label_gpt3-5.json'), 'w') as file:
+                with open(os.path.join(folder_path, 'labels.json'), 'w') as file:
                     json.dump(llm_label_data, file, indent=4)
                 print(f"Finished processing the folder: {folder}")
 
@@ -122,7 +124,10 @@ def process_folder(base_path):
                     error_message = f"Error processing folder {folder}: {e}\n"
                     error_file.write(error_message)
                 print(f"An error occurred while processing the folder {folder}. Please check the error log for details.")
-
+            
+            # Print progress
+            progress_percentage = (i + 1) / total_folders * 100
+            print(f"Processing... {progress_percentage:.2f}% complete")
 
 # Process each DOI-named folder in the 'train' directory
 train_directory_path = './micrograph_dataset/train'
