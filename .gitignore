@@ -179,3 +179,5 @@ test.ipynb
 test.py
 prompts.txt
 run_vision_model.py
+/train/
+/test/
