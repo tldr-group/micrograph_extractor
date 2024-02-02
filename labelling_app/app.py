@@ -604,7 +604,14 @@ class App(ttk.Frame):
         self.switch_text.grid(row=5, column=0, sticky="w")
         self.switch_dropdown = ttk.Combobox(
             self.prop_frame,
-            values=["none", "llm", "regex"],
+            values=[
+                "none",
+                "gpt3_5_with_abstract",
+                "gpt3_5_without_abstract",
+                "gpt4_with_abstract",
+                "gpt4_without_abstract",
+                "regex",
+            ],
             font=LARGER_FONT,
         )
         self.switch_dropdown.bind("<<ComboboxSelected>>", self._view_select_change)
