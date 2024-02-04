@@ -41,7 +41,7 @@ def copy_json_files(source_folder_path, target_folder_path):
 
 
 
-def process_micrograph_images(target_folder_base, train_folder, is_micrograph="true"):
+def process_micrograph_images(llm_tpye,target_folder_base, train_folder, is_micrograph="true"):
 
     # iterate through all DOIs
     for doi in os.listdir(train_folder):
@@ -53,7 +53,7 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
             continue
 
         # JSON file path
-        json_file_path = os.path.join(doi_folder, "labels.json")
+        json_file_path = os.path.join(doi_folder, "label_llm.json")
         captions_json_path = os.path.join(doi_folder, "captions.json")
         paper_data_json_path = os.path.join(doi_folder, "paper_data.json")
 
@@ -61,7 +61,7 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
         if os.path.exists(json_file_path):
             with open(json_file_path, 'r') as json_file:
                 loaded_json = json.load(json_file)
-                data = loaded_json.get("llm", [])
+                data = loaded_json.get(llm_tpye, [])
 
                 # iterate through all items in JSON file
                 extracted_data = [] 
@@ -88,7 +88,7 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
                     os.makedirs(target_doi_folder, exist_ok=True)
                     
                     # save extracted data to json file
-                    target_json_folder = os.path.join(target_doi_folder, "llm_label_gpt3-5_extract.json")
+                    target_json_folder = os.path.join(target_doi_folder, f"{llm_type}_extract.json")
                     with open(target_json_folder, 'w') as target_json_file:
                         json.dump(extracted_data, target_json_file, indent=4)
 
@@ -103,13 +103,14 @@ def process_micrograph_images(target_folder_base, train_folder, is_micrograph="t
 # target_folder = './train'  # Target folder path
 # copy_json_files(source_folder, target_folder)
 
+llm_type = "gpt4_with_abstract"
 is_micrograph = "true"    
 target_folder_base = "./train_ismicrograph_true_new"             
 train_folder = './micrograph_dataset_new/train' 
-process_micrograph_images(target_folder_base,train_folder,is_micrograph)
+process_micrograph_images(llm_type, target_folder_base,train_folder,is_micrograph)
 
-is_micrograph = "false"    
-target_folder_base = "./train_ismicrograph_false_new"             
-train_folder = './micrograph_dataset_new/train' 
-process_micrograph_images(target_folder_base,train_folder,is_micrograph)
+# is_micrograph = "false"    
+# target_folder_base = "./train_ismicrograph_false_new"             
+# train_folder = './micrograph_dataset_new/train' 
+# process_micrograph_images(target_folder_base,train_folder,is_micrograph)
 

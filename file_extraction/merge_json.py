@@ -5,7 +5,7 @@ import re
 
 def process_folder(doi_folder):
     # Paths to the required files
-    extraction_file = os.path.join(doi_folder, "llm_label_gpt3-5_extract.json")
+    extraction_file = os.path.join(doi_folder, "gpt4_with_abstract_extract.json")
     captions_file = os.path.join(doi_folder, "captions.json")
     paper_data_file = os.path.join(doi_folder, "paper_data.json")
     imgs_folder = os.path.join(doi_folder, "imgs")
@@ -44,7 +44,7 @@ def process_folder(doi_folder):
             "captions": caption,
             "abstract": abstract,
             "img_path": figure_img_paths,
-            "gpt3_5_response": figure_info,
+            "llm_response": figure_info,
         }
         output.append(figure_data)
 
@@ -64,4 +64,4 @@ def traverse_and_process(base_folder):
             json.dump(result, file, indent=4)
 
 # Example usage
-traverse_and_process("./train_ismicrograph_true")
+traverse_and_process("./train_ismicrograph_true_new")
