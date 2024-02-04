@@ -1,3 +1,4 @@
+import json
 import tkinter as tk
 from tkinter import ttk
 from PIL import ImageTk, Image
@@ -448,16 +449,23 @@ class App(ttk.Frame):
             for i, e in enumerate(self.entries):
                 e.set_evaluate(False)
             return
+        
+        human_label_data = self.load_label_data("human", self.paper_paths[self.paper_idx])
+        current_figure_number = human_label_data[self.figure_idx]["figure"]
 
-        all_label_data = self.load_label_data(
-            label_type, self.paper_paths[self.paper_idx]
-        )
-        fig_label_data = all_label_data[self.figure_idx]
+        all_label_data = self.load_label_data(label_type, self.paper_paths[self.paper_idx])
+
+        fig_label_data = all_label_data.get(str(current_figure_number))
+
+        if fig_label_data is None:
+            print(f"No matching label data found for figure {current_figure_number} in {label_type}")
+        
         data = [
             fig_label_data.get("isMicrograph"),  
             fig_label_data.get("instrument", "none"),  
             fig_label_data.get("material", "none"),    
         ]
+
         for i, e in enumerate(self.entries):
             e.set_evaluate(True)
             if i < 3:
@@ -475,12 +483,26 @@ class App(ttk.Frame):
             if i < 3:
                 e.set_value(data[i], 0)
 
-    def load_label_data(
-        self, label_type: LabelTypes, path: str, fname: str = "labels"
-    ) -> dict:
+    def load_label_data(self, label_type: LabelTypes, path: str, fname: str = "labels") -> dict:
+
         with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
-            data = load(f)
-        return data[label_type]
+            data = json.load(f)
+
+        if label_type == "human":
+            return data.get("human", {})
+
+        else:
+            human_labels = data.get("human", [])
+            matched_labels = {}
+
+            for human_label in human_labels:
+                figure_number = human_label.get("figure")
+                for label in data.get(label_type, []):
+                    if label.get("figure") == figure_number:
+                        matched_labels[figure_number] = label
+                        break
+                    
+            return matched_labels
 
     def intro_modal(self) -> None:
         self.window = tk.Toplevel(self)
