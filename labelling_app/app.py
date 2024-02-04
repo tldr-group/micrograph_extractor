@@ -361,10 +361,10 @@ class App(ttk.Frame):
 
     def add_eval(self) -> None:
         data = {
-            "figure": self.figure_idx,
+            "figure": self.figure_nums[self.figure_idx],
             "isMicrograph_correct": self.micrograph.get_value(2),
             "instrument_correct": self.instrument.get_value(2),
-            "material_correct": self.instrument.get_value(2),
+            "material_correct": self.material.get_value(2),
         }
         self.current_paper_eval.append(data)
 
@@ -454,9 +454,9 @@ class App(ttk.Frame):
         )
         fig_label_data = all_label_data[self.figure_idx]
         data = [
-            fig_label_data["isMicrograph"],
-            fig_label_data["instrument"],
-            fig_label_data["material"],
+            fig_label_data.get("isMicrograph"),  
+            fig_label_data.get("instrument", "none"),  
+            fig_label_data.get("material", "none"),    
         ]
         for i, e in enumerate(self.entries):
             e.set_evaluate(True)
