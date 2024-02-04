@@ -7,6 +7,7 @@ import re
 from gpt_utils import *
 import traceback
 
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai.api_key)
 
@@ -103,114 +104,101 @@ def get_subfigure(img_path):
         return ""
 
 
-def process_json(doi_path,user_message_1,system_message_user2,system_message_user3):
-    # read combined_output.json
+def save_to_file(output_file, data):
+    # Saves data to a file
+    with open(output_file, 'w') as file:
+        json.dump(data, file, indent=4)
+
+def process_json(doi_path, user_message_1, system_message_user2):
     json_file_path = os.path.join(doi_path, "combined_output.json")
     with open(json_file_path, "r") as file:
         data = json.load(file)
 
-    # define output file path
     output_file = os.path.join(doi_path, "labels_gpt4_vision_subfigure.json")
 
-    # check if output file exists
     if os.path.exists(output_file):
-        os.remove(output_file)
+        with open(output_file, "r") as file:
+            new_data = json.load(file)
+    else:
+        new_data = []
 
-    new_data = []
+    processed_img_paths = {item['subfigure']: item for item in new_data}
+
     for item in data:
-        
-        img_paths = item.get('img_path', [])# img_paths
-        figure = item.get('figure',[]) # figure
-        abstract = item.get('abstract', []) # abstract
-        captions = item.get('captions', []) # captions
+        img_paths = item.get('img_path', [])
+        figure = item.get('figure', [])
+        abstract = item.get('abstract', [])
+        captions = item.get('captions', [])
 
+        # Prepare paper information for processing
         abstract_escaped = repr(abstract)
         captions_escaped = repr(captions)
-        paper_information = f""" The abstract is: {abstract_escaped}, and the captions are: {captions_escaped}"""
-
+        paper_information = f"The abstract is: {abstract_escaped}, and the captions are: {captions_escaped}"
         user_message_2 = system_message_user2 + paper_information
-        user_message_3 = system_message_user3 + paper_information
 
-        # 处理img_paths列表
-        
-        if len(img_paths) > 1:
-            for img_path in img_paths[1:]:
-                response_1 = get_completion_single_image(img_path, user_message_1) # whether the image is a single micrograph
+        # Iterate over img_paths, skipping already processed images
+        for img_path in img_paths[1:]:
+            if get_subfigure(img_path) in processed_img_paths:
+                continue
 
+            try:
+                # Simulated functions for demonstration purposes
+                response_1 = get_completion_single_image(img_path, user_message_1)
                 if re.search(r'\bfalse\b', response_1, re.IGNORECASE):
                     new_fields = {
                         'figure': figure,
                         'subfigure': get_subfigure(img_path),
-                        'isMicrograph': 'false'
+                        'isMicrograph': False,
                     }
-                    if new_fields:
-                        new_data.append(new_fields)
-
                 elif re.search(r'\btrue\b', response_1, re.IGNORECASE):
-                    if len(img_paths)-1 == 1: # whether the subfigure has mainfigure
-                        response_2 = get_completion_multiple_images([img_paths[0], img_path], user_message_2) # no main_figure, get materilas, instrument, comments with single micrograph
-                        response_json = extract_json_from_response(response_2)
+                    response_2 = get_completion_multiple_images([img_paths[0], img_path], user_message_2)
+                    response_json = extract_json_from_response(response_2)
 
-                        new_fields = {
-                            'figure': figure,
-                            'subfigure': get_subfigure(img_path)
-                        }
+                    new_fields = {
+                        'figure': figure,
+                        'subfigure': get_subfigure(img_path)
+                    }
+                    new_fields.update(response_json)
+                else:
+                    # Handle case where response_1 is neither 'true' nor 'false'
+                    new_fields = {
+                        "figure": figure,
+                        "subfigure": get_subfigure(img_path),
+                        "isMicrograph": False,
+                        "comments": "Ambiguous response for micrograph check"
+                    }
+            except Exception as e:
+                new_fields = {
+                    "figure": figure,
+                    "subfigure": get_subfigure(img_path),
+                    "isMicrograph": False,
+                    "comments": f"Error processing image: {str(e)}"
+                }
 
-                        new_fields.update(response_json)
-                        if new_fields:
-                            new_data.append(new_fields) 
-                    
-                    else:
-                        response_3 = get_completion_multiple_images(img_paths, user_message_3) # has mainfigure, get materilas, instrument, comments with subfigure and mainfigure
-                        response_json = extract_json_from_response(response_3)
+            new_data.append(new_fields)
+            processed_img_paths[img_path] = new_fields
 
-                        new_fields = {
-                            'figure': figure,
-                            'subfigure': get_subfigure(img_path)
-                        }
-
-                        new_fields.update(response_json)
-                        if new_fields:
-                            new_data.append(new_fields)
-
-
-        else:
-
-            new_fields = {
-                "figure": figure,
-                "subfigure": [],
-                "isMicrograph": "false"
-            }
-            if new_fields:
-                new_data.append(new_fields)                    
-
-        if new_data:
-            with open(output_file, 'w') as file:
+            # Save the processing result immediately after each image to preserve progress
+            with open(output_file, "w") as file:
                 json.dump(new_data, file, indent=4)
 
-
-def process_all_doi_folders(train_folder,user_message_1,system_message_user2,system_message_user3):
+def process_all_doi_folders(train_folder, user_message_1, system_message_user2):
     error_log_path = os.path.join(train_folder, "error_log.txt")
     items = [item for item in os.listdir(train_folder) if os.path.isdir(os.path.join(train_folder, item))]
     total_items = len(items)
 
     for index, item in enumerate(items):
         item_path = os.path.join(train_folder, item)
-        json_path = os.path.join(item_path, "labels_gpt4_vision_subfigure.json")
 
-        # Check if llm_labeling_subfigure.json exists
-        if os.path.exists(json_path):
-            print(f"JSON file found, skipping folder: {item_path}")
-        else:
-            print(f"Processing folder: {item_path}")
-            try:
-                process_json(item_path, user_message_1, system_message_user2, system_message_user3)
-            except Exception as e:
-                # Write error message to error_log.txt in the main folder
-                with open(error_log_path, "a") as error_file:
-                    error_message = f"Error processing {item_path}: {e}\n{traceback.format_exc()}"
-                    error_file.write(error_message)
-            print(f"Finished processing folder: {item_path}")
+        print(f"Processing folder: {item_path}")
+        try:
+            process_json(item_path, user_message_1, system_message_user2)
+        except Exception as e:
+            # Write error message to error_log.txt in the main folder
+            with open(error_log_path, "a") as error_file:
+                error_message = f"Error processing {item_path}: {e}\n{traceback.format_exc()}"
+                error_file.write(error_message)
+        print(f"Finished processing folder: {item_path}")
 
         # Print progress
         progress = ((index + 1) / total_items) * 100
@@ -232,58 +220,28 @@ user_message_1 = """
             "Reason: The image is a micrograph with 2 sub-subfigures.
             Answer: FALSE"
             """
-system_message_user3 = """
+system_message_user2 = """
             You are an expert materials scientist working on micrographs. The first image is a main image is taken from a research paper. The second image is a subfigure cropped from the main image. It is might be a micrograph. 
 
-            Focus on the abstract of the paper, captions, and the content of these images. Answer the questions below in JSON entries without additional text. 
-            1.Do you think the cropped image is a micrograph? Answer with a single 'true' or 'false'.
+            Focus on the abstract of the paper, captions, and the content of these images. Answer the questions below: 
+            1.Is the cropped image a micrograph? Answer with a single 'true' or 'false'.
             2.What technique (e.g., SEM, TEM) was used to create the micrograph in the cropped image? Provide a brief answer, such as 'SEM' or 'Optical Microscopy'.
             3.What material is shown in the micrograph? Provide the full name e.g., 'Lithium Nickel-Manganese-Cobalt (NMC) 811 cathode' or 'Insulin aggregates'.
-            4.If there are any interesting things about the micrograph, like specific processing conditions or anomalies, please put these in a list of single phrases (e.g ['heat-treated, 'cracked', 'sintered']). 
+            4.If there are any interesting things about the micrograph, like specific processing conditions or anomalies, put these in a list of single phrases (e.g ['heat-treated, 'cracked', 'sintered']). 
             5.Which part of the caption of the mainfigure does this subfigure correspond to? Extract the caption of the subfigure, and its label e.g (a), (b) if possible.
 
-            Here's an example of the JSON output format. 
+            Here's an example of the JSON output format:
 
             {
-            "isMicrograph": "true",
+            "isMicrograph": True,
             "instrument": "Technique",
             "material": "Description",
             "comments": ["comment1", "comment2", "comment3"]
             "subfigure_caption": "(label): caption of subfigure"
                 }
 
-            IMPORTANT: The answer should only contain pure JSON data.
-            """
-
-system_message_user2 = """
-            You are an expert materials scientist. You study micrographs, 
-            which are images taken using a microscope. 
-
-            Focus on the abstract of the paper, captions, and the content of these images, answer these questions in a JSON format:
-            1.Is the image a micrograph? Answer with a single 'true' or 'false'.
-            2.If true, what technique (e.g., SEM, TEM) was used to create the micrograph? Provide a brief answer, such as 'SEM' or 'Optical Microscopy'.
-            3.What material is shown in the micrograph? Provide the full name e.g., 'Lithium Nickel-Manganese-Cobalt (NMC) 811 cathode' or 'Insulin aggregates'.
-            4.If there are any interesting things about the micrograph, like specific processing conditions or anomalies, please put these in a list of single phrases (e.g ['heat-treated, 'cracked', 'sintered']). 
-            
-            If there is a micrograph in the figure, ensure that the output is in JSON format with the fields "isMicrograph", "instrument", "material" and 'comments'. 
-            If there is no micrograph in the figure, ensure that the output is in JSON format only with the fields "isMicrograph".
-
-            Here's an example of how the JSON output should look with micrograph present:
-
-            {
-            "isMicrograph": "true",
-            "instrument": "Technique",
-            "material": "Description",
-            "comments": ["comment1", "comment2", "comment3"]
-            }
-
-            Here's an example of how the JSON output should look without micrograph present:
-            {
-            "isMicrograph": "false"
-            }
-
-            MPORTANT: The answer should only contain pure JSON data.
+            IMPORTANT: The answer should only contain pure JSON data matching the fields provided in the examples.
             """
         
-train_folder = "./train_ismicrograph_true"  
-process_all_doi_folders(train_folder)
+train_folder = "./micrograph_interesting/train"  
+process_all_doi_folders(train_folder, user_message_1, system_message_user2)

@@ -96,7 +96,7 @@ def process_folder(base_path):
                     figure_type = item['figType']
 
                     if figure_type == 'Figure':
-                        response = assistant(caption)
+                        response = assistant(abstract, caption)
                         response_data = extract_json_from_response(response)
                         response_data['figure'] = name
                         llm_label_data.append(response_data)
