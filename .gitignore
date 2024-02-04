@@ -180,5 +180,10 @@ test.ipynb
 test.py
 prompts.txt
 run_vision_model.py
+<<<<<<< HEAD
+/train/
+/test/
+=======
 /train_ismicrograph_true_new/
 /train_ismicrograph_false_new/
+>>>>>>> 3ce0af843e61c86ee2dc50c7efbb8e8b879276bc
