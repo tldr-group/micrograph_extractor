@@ -103,6 +103,50 @@ def sort_human(l):
     return l
 
 
+def get_paths_missing_labels() -> List[str]:
+    paths = []
+    missing_labels_count = 0
+    for path in listdir("dataset/train"):
+        try:
+            with open(f"dataset/train/{path}/labels.json") as f:
+                try:
+                    data = load(f)
+                except:
+                    continue
+        except FileNotFoundError:
+            continue
+        if "human" not in data:
+            missing_labels_count += 1
+            paths.append(path)
+    print(missing_labels_count)
+    return paths
+
+
+def get_paths_missing_eval() -> List[str]:
+    paths = []
+    missing_evals_count = 0
+    for path in listdir("dataset/train"):
+        try:
+            with open(f"dataset/train/{path}/labels.json") as f:
+                try:
+                    data = load(f)
+                except:
+                    continue
+        except FileNotFoundError:
+            continue
+
+        missing_eval = True
+        keys = []
+        for key in data.keys():
+            if "eval" in key:
+                missing_eval = False
+        if missing_eval == True:
+            paths.append(path)
+            missing_evals_count += 1
+    print(missing_evals_count)
+    return paths
+
+
 InputTypes = Literal["checkbox", "dropdown", "entry", "comment"]
 LabelTypes = Literal["none", "human", "llm", "regex"]
 
@@ -248,6 +292,8 @@ class App(ttk.Frame):
         self.paper_paths: List[str] = []
         self.fig_comments: List[str] = []
 
+        self.only_missing = False
+
         self.current_paper_data: List[dict] = []
         self.current_paper_eval: List[dict] = []
 
@@ -262,11 +308,16 @@ class App(ttk.Frame):
         self.start = int(self.start_idx.get())
         self.n = int(self.n_papers.get())
         self.window.destroy()
-        self.start_logic(self.dir, self.start, self.n)
+        self.start_logic(self.dir, self.start, self.n, self.only_missing)
 
-    def start_logic(self, folder: str, start_idx: int, n_papers: int) -> None:
+    def start_logic(
+        self, folder: str, start_idx: int, n_papers: int, only_missing: bool = False
+    ) -> None:
         all_papers = listdir(folder)
         self.paper_paths = all_papers[start_idx : start_idx + n_papers]
+        if only_missing:
+            self.paper_paths = get_paths_missing_eval()  # get_paths_missing_labels()
+        self.n = len(self.paper_paths)
         self.load_paper(self.paper_paths[0])
 
     def load_paper(self, path: str) -> None:
@@ -449,21 +500,27 @@ class App(ttk.Frame):
             for i, e in enumerate(self.entries):
                 e.set_evaluate(False)
             return
-        
-        human_label_data = self.load_label_data("human", self.paper_paths[self.paper_idx])
+
+        human_label_data = self.load_label_data(
+            "human", self.paper_paths[self.paper_idx]
+        )
         current_figure_number = human_label_data[self.figure_idx]["figure"]
 
-        all_label_data = self.load_label_data(label_type, self.paper_paths[self.paper_idx])
+        all_label_data = self.load_label_data(
+            label_type, self.paper_paths[self.paper_idx]
+        )
 
         fig_label_data = all_label_data.get(str(current_figure_number))
 
         if fig_label_data is None:
-            print(f"No matching label data found for figure {current_figure_number} in {label_type}")
-        
+            print(
+                f"No matching label data found for figure {current_figure_number} in {label_type}"
+            )
+
         data = [
-            fig_label_data.get("isMicrograph"),  
-            fig_label_data.get("instrument", "none"),  
-            fig_label_data.get("material", "none"),    
+            fig_label_data.get("isMicrograph"),
+            fig_label_data.get("instrument", "none"),
+            fig_label_data.get("material", "none"),
         ]
 
         for i, e in enumerate(self.entries):
@@ -483,7 +540,9 @@ class App(ttk.Frame):
             if i < 3:
                 e.set_value(data[i], 0)
 
-    def load_label_data(self, label_type: LabelTypes, path: str, fname: str = "labels") -> dict:
+    def load_label_data(
+        self, label_type: LabelTypes, path: str, fname: str = "labels"
+    ) -> dict:
 
         with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
             data = json.load(f)
@@ -501,7 +560,7 @@ class App(ttk.Frame):
                     if label.get("figure") == figure_number:
                         matched_labels[figure_number] = label
                         break
-                    
+
             return matched_labels
 
     def intro_modal(self) -> None:

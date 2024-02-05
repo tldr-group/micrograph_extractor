@@ -1,4 +1,5 @@
 from os import listdir
+from json import load
 from shutil import copytree, rmtree
 import numpy as np
 
@@ -53,8 +54,91 @@ def detect_composite_image_from_caption(caption: str) -> bool:
         return False
 
 
+def get_precision_recall(
+    path: str,
+    which_labels: str = "gpt3_5_with_abstract",
+    which_eval: str = "gpt3_5_with_abstract_eval",
+    eval_all: bool = False,
+) -> None:
+    total_n_fig = 0
+    total_n_papers = 0
+    tp_graph, tn_graph, fp_graph, fn_graph = 0, 0, 0, 0
+    correct_instrument = 0
+    correct_mat = 0
+    for paper in listdir(path):
+        try:
+            with open(f"{path}{paper}/labels.json") as f:
+                try:
+                    data = load(f)
+                except:
+                    continue
+        except FileNotFoundError:
+            continue
+
+        try:
+            labels = data[which_labels]
+            evals = data[which_eval]
+        except KeyError:
+            continue
+
+        if len(labels) != len(evals):
+            continue
+
+        print(labels, evals)
+
+        for i in range(len(evals)):
+            print(i)
+            label = labels[i]
+            evaluation = evals[i]
+
+            if (
+                label["isMicrograph"] == True
+                and evaluation["isMicrograph_correct"] == True
+            ):
+                tp_graph += 1
+            elif (
+                label["isMicrograph"] == False
+                and evaluation["isMicrograph_correct"] == True
+            ):
+                tn_graph += 1
+            elif (
+                label["isMicrograph"] == True
+                and evaluation["isMicrograph_correct"] == False
+            ):
+                fp_graph += 1
+            elif (
+                label["isMicrograph"] == False
+                and evaluation["isMicrograph_correct"] == False
+            ):
+                fn_graph += 1
+
+            if eval_all:
+                if evaluation["instrument_correct"]:
+                    correct_instrument += 1
+
+                if evaluation["material_correct"]:
+                    correct_mat += 1
+
+            total_n_fig += 1
+        total_n_papers += 1
+    print(tp_graph, tn_graph, fp_graph, fn_graph)
+    # print(correct_instrument - tn_graph)
+    # print(correct_mat - tn_graph)
+
+    print(total_n_fig, total_n_papers)
+
+
 # TODO: add check micrograph code based on caption
 # TODO: add check instrument code based on caption
 
 if __name__ == "__main__":
-    train_test_split("dataset", n_train=1500, filter_term="arxiv")
+    # get_precision_recall(
+    #    "dataset/train/", "gpt3_5_without_abstract", "gpt3_5_without_abstract_eval_auto"
+    # )
+    get_precision_recall(
+        "dataset/train/", "gpt3_5_with_abstract", "gpt3_5_with_abstract_eval"
+    )
+    # train_test_split("dataset", n_train=1500, filter_term="arxiv")
+
+
+# w/out abstract: 291 1796 27 93
