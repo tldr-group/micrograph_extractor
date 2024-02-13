@@ -46,4 +46,4 @@ def evaluate_labels(train_folder, label_type):
 
 if __name__ == "__main__":
     train_folder = "dataset/train"
-    evaluate_labels(train_folder, "gpt3_5_without_abstract")
+    evaluate_labels(train_folder, "gpt4_without_abstract")

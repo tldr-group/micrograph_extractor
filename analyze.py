@@ -1,7 +1,10 @@
 from os import listdir
+from os.path import getmtime
+from datetime import datetime
 from json import load
 from shutil import copytree, rmtree
 import numpy as np
+from typing import List, Tuple
 
 
 from scrapers.generic import make_folder
@@ -59,12 +62,29 @@ def get_precision_recall(
     which_labels: str = "gpt3_5_with_abstract",
     which_eval: str = "gpt3_5_with_abstract_eval",
     eval_all: bool = False,
-) -> None:
+) -> Tuple[List[int], List[int], List[str], List[int]]:
     total_n_fig = 0
     total_n_papers = 0
     tp_graph, tn_graph, fp_graph, fn_graph = 0, 0, 0, 0
     correct_instrument = 0
     correct_mat = 0
+
+    is_micrograph: List[int] = []
+    is_correct: List[int] = []
+    papers: List[str] = []
+    fig_nums: List[int] = []
+
+    def _handle_error() -> None:
+        is_micrograph.append(-1)
+        is_correct.append(-1)
+
+    def get_eval(evals: List[dict], fig_n: int) -> dict:
+        for d in evals:
+            if int(d["figure"]) == fig_n:
+                return d
+            else:
+                pass
+
     for paper in listdir(path):
         try:
             with open(f"{path}{paper}/labels.json") as f:
@@ -84,33 +104,46 @@ def get_precision_recall(
         if len(labels) != len(evals):
             continue
 
-        print(labels, evals)
-
-        for i in range(len(evals)):
-            print(i)
+        for i in range(len(labels)):
+            # print(i)
             label = labels[i]
-            evaluation = evals[i]
+            fig_num = int(label["figure"])
+            # print(fig_num)
+            evaluation = get_eval(evals, fig_num)
 
             if (
                 label["isMicrograph"] == True
                 and evaluation["isMicrograph_correct"] == True
             ):
+                is_micrograph.append(1)
+                is_correct.append(1)
                 tp_graph += 1
             elif (
                 label["isMicrograph"] == False
                 and evaluation["isMicrograph_correct"] == True
             ):
+                is_micrograph.append(0)
+                is_correct.append(1)
                 tn_graph += 1
             elif (
                 label["isMicrograph"] == True
                 and evaluation["isMicrograph_correct"] == False
             ):
+                is_micrograph.append(0)
+                is_correct.append(0)
                 fp_graph += 1
             elif (
                 label["isMicrograph"] == False
                 and evaluation["isMicrograph_correct"] == False
             ):
+                is_micrograph.append(1)
+                is_correct.append(0)
                 fn_graph += 1
+            else:
+                raise Exception("ahhhhhhh")
+
+            papers.append(paper)
+            fig_nums.append(int(evaluation["figure"]))
 
             if eval_all:
                 if evaluation["instrument_correct"]:
@@ -122,23 +155,39 @@ def get_precision_recall(
             total_n_fig += 1
         total_n_papers += 1
     print(tp_graph, tn_graph, fp_graph, fn_graph)
-    # print(correct_instrument - tn_graph)
-    # print(correct_mat - tn_graph)
+    return is_micrograph, is_correct, papers, fig_nums
 
-    print(total_n_fig, total_n_papers)
-
-
-# TODO: add check micrograph code based on caption
-# TODO: add check instrument code based on caption
 
 if __name__ == "__main__":
     # get_precision_recall(
     #    "dataset/train/", "gpt3_5_without_abstract", "gpt3_5_without_abstract_eval_auto"
     # )
-    get_precision_recall(
+    gpt_3_5_graph, gpt_3_5_correct, gpt_3_5_papers, gpt_3_5_figs = get_precision_recall(
         "dataset/train/", "gpt3_5_with_abstract", "gpt3_5_with_abstract_eval"
     )
+    gpt_4_graph, gpt_4_correct, gpt_4_papers, gpt_4_figs = get_precision_recall(
+        "dataset/train/", "gpt4_with_abstract", "gpt4_with_abstract_eval"
+    )
+
+    errors = []
+    papers = []
+    nums = []
+    for i in range(len(gpt_3_5_graph)):
+        if gpt_3_5_graph[i] != gpt_4_graph[i]:
+            # print(i, gpt_3_5_graph[i], gpt_4_graph[i])
+            errors.append(i)
+            papers.append(gpt_3_5_papers[i])
+            nums.append(gpt_4_figs[i])
+    print(len(errors))
+    # print(len(set(papers)), len(set(gpt_3_5_papers)))
+    unique_papers = list(set(papers))
+    with open("possible_errors.txt", "w+") as f:
+        for p, n in zip(papers, nums):
+            f.writelines(f"{p}  {n}\n")
+
+    # get_precision_recall("dataset/train/", "human", "gpt4_with_abstract_eval")
     # train_test_split("dataset", n_train=1500, filter_term="arxiv")
 
 
 # w/out abstract: 291 1796 27 93
+# w/ abstract 383 1607 110 107

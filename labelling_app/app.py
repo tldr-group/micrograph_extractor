@@ -136,9 +136,8 @@ def get_paths_missing_eval() -> List[str]:
             continue
 
         missing_eval = True
-        keys = []
         for key in data.keys():
-            if "eval" in key:
+            if "gpt4_with_abstract_eval" in key:
                 missing_eval = False
         if missing_eval == True:
             paths.append(path)
@@ -292,7 +291,7 @@ class App(ttk.Frame):
         self.paper_paths: List[str] = []
         self.fig_comments: List[str] = []
 
-        self.only_missing = False
+        self.only_missing = True
 
         self.current_paper_data: List[dict] = []
         self.current_paper_eval: List[dict] = []
