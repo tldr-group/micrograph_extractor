@@ -1,6 +1,5 @@
+import os
 from os import listdir
-from os.path import getmtime
-from datetime import datetime
 from json import load
 from shutil import copytree, rmtree
 import numpy as np
@@ -48,6 +47,48 @@ def train_test_split(
             copytree(f"{dataset_path}/papers/{paper}", f"{dataset_path}/test/{paper}")
         except FileExistsError:
             pass
+
+
+def evaluate_labels(train_folder, label_type):
+    for doi_folder in os.listdir(train_folder):
+        doi_path = os.path.join(train_folder, doi_folder)
+        if os.path.isdir(doi_path):
+            label_file = os.path.join(doi_path, "labels.json")
+            if os.path.isfile(label_file):
+                with open(label_file, "r", encoding="utf-8") as file:
+                    labels = json.load(file)
+
+                # Check if 'human' field exists, if not, skip
+                if "human" not in labels:
+                    print(f"Skipping {doi_folder}, 'human' field not found.")
+                    continue
+
+                llm_eval = []
+
+                human_labels = labels.get("human", [])
+                llm_labels = labels.get(label_type, [])
+
+                llm_dict = {item["figure"]: item for item in llm_labels}
+
+                for human_item in human_labels:
+                    figure = human_item["figure"]
+                    # compare with llm
+                    llm_item = llm_dict.get(figure)
+                    if llm_item:
+                        isMicrograph_correct = (
+                            llm_item["isMicrograph"] == human_item["isMicrograph"]
+                        )
+                    else:
+                        print(f"No {label_type} item for figure: {figure}")
+                        isMicrograph_correct = False
+                    llm_eval.append(
+                        {"figure": figure, "isMicrograph_correct": isMicrograph_correct}
+                    )
+
+                # update evaluated labels and save
+                labels[f"{label_type}_eval_auto"] = llm_eval
+                with open(label_file, "w", encoding="utf-8") as file:
+                    json.dump(labels, file, ensure_ascii=False, indent=4)
 
 
 def detect_composite_image_from_caption(caption: str) -> bool:
@@ -145,16 +186,25 @@ def get_precision_recall(
             papers.append(paper)
             fig_nums.append(int(evaluation["figure"]))
 
+            is_micrograph_bool = (
+                label["isMicrograph"] == False
+                and evaluation["isMicrograph_correct"] == False
+            ) or (
+                label["isMicrograph"] == True
+                and evaluation["isMicrograph_correct"] == True
+            )
             if eval_all:
-                if evaluation["instrument_correct"]:
+                if evaluation["instrument_correct"] and is_micrograph_bool:
                     correct_instrument += 1
 
-                if evaluation["material_correct"]:
+                if evaluation["material_correct"] and is_micrograph_bool:
                     correct_mat += 1
 
             total_n_fig += 1
         total_n_papers += 1
     print(tp_graph, tn_graph, fp_graph, fn_graph)
+    print(correct_instrument, correct_instrument / (tp_graph + fn_graph))
+    print(correct_mat, correct_mat / (tp_graph + fn_graph))
     return is_micrograph, is_correct, papers, fig_nums
 
 
@@ -163,10 +213,13 @@ if __name__ == "__main__":
     #    "dataset/train/", "gpt3_5_without_abstract", "gpt3_5_without_abstract_eval_auto"
     # )
     gpt_3_5_graph, gpt_3_5_correct, gpt_3_5_papers, gpt_3_5_figs = get_precision_recall(
-        "dataset/train/", "gpt3_5_with_abstract", "gpt3_5_with_abstract_eval"
+        "dataset/train/",
+        "gpt3_5_with_abstract",
+        "gpt3_5_with_abstract_eval",
+        eval_all=True,
     )
     gpt_4_graph, gpt_4_correct, gpt_4_papers, gpt_4_figs = get_precision_recall(
-        "dataset/train/", "gpt4_with_abstract", "gpt4_with_abstract_eval"
+        "dataset/train/", "gpt4_with_abstract", "gpt4_with_abstract_eval", eval_all=True
     )
 
     errors = []

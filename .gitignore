@@ -161,6 +161,7 @@ cython_debug/
 
 outputs/*
 pdffigures2/*
+MatSciBERT/*
 .vscode/*
 project/*
 sample_data/*
