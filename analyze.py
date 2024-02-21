@@ -1,8 +1,11 @@
 import os
 from os import listdir
-from json import load
+from json import load, dump
 from shutil import copytree, rmtree
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay
+
 from typing import List, Tuple
 
 
@@ -56,7 +59,7 @@ def evaluate_labels(train_folder, label_type):
             label_file = os.path.join(doi_path, "labels.json")
             if os.path.isfile(label_file):
                 with open(label_file, "r", encoding="utf-8") as file:
-                    labels = json.load(file)
+                    labels = load(file)
 
                 # Check if 'human' field exists, if not, skip
                 if "human" not in labels:
@@ -88,7 +91,7 @@ def evaluate_labels(train_folder, label_type):
                 # update evaluated labels and save
                 labels[f"{label_type}_eval_auto"] = llm_eval
                 with open(label_file, "w", encoding="utf-8") as file:
-                    json.dump(labels, file, ensure_ascii=False, indent=4)
+                    dump(labels, file, ensure_ascii=False, indent=4)
 
 
 def detect_composite_image_from_caption(caption: str) -> bool:
@@ -103,21 +106,16 @@ def get_precision_recall(
     which_labels: str = "gpt3_5_with_abstract",
     which_eval: str = "gpt3_5_with_abstract_eval",
     eval_all: bool = False,
-) -> Tuple[List[int], List[int], List[str], List[int]]:
+) -> Tuple:
     total_n_fig = 0
     total_n_papers = 0
     tp_graph, tn_graph, fp_graph, fn_graph = 0, 0, 0, 0
     correct_instrument = 0
     correct_mat = 0
 
+    pred_micrograph: List[int] = []
     is_micrograph: List[int] = []
     is_correct: List[int] = []
-    papers: List[str] = []
-    fig_nums: List[int] = []
-
-    def _handle_error() -> None:
-        is_micrograph.append(-1)
-        is_correct.append(-1)
 
     def get_eval(evals: List[dict], fig_n: int) -> dict:
         for d in evals:
@@ -146,16 +144,15 @@ def get_precision_recall(
             continue
 
         for i in range(len(labels)):
-            # print(i)
             label = labels[i]
             fig_num = int(label["figure"])
-            # print(fig_num)
             evaluation = get_eval(evals, fig_num)
 
             if (
                 label["isMicrograph"] == True
                 and evaluation["isMicrograph_correct"] == True
             ):
+                pred_micrograph.append(1)
                 is_micrograph.append(1)
                 is_correct.append(1)
                 tp_graph += 1
@@ -163,6 +160,7 @@ def get_precision_recall(
                 label["isMicrograph"] == False
                 and evaluation["isMicrograph_correct"] == True
             ):
+                pred_micrograph.append(0)
                 is_micrograph.append(0)
                 is_correct.append(1)
                 tn_graph += 1
@@ -170,6 +168,7 @@ def get_precision_recall(
                 label["isMicrograph"] == True
                 and evaluation["isMicrograph_correct"] == False
             ):
+                pred_micrograph.append(1)
                 is_micrograph.append(0)
                 is_correct.append(0)
                 fp_graph += 1
@@ -177,14 +176,12 @@ def get_precision_recall(
                 label["isMicrograph"] == False
                 and evaluation["isMicrograph_correct"] == False
             ):
+                pred_micrograph.append(0)
                 is_micrograph.append(1)
                 is_correct.append(0)
                 fn_graph += 1
             else:
-                raise Exception("ahhhhhhh")
-
-            papers.append(paper)
-            fig_nums.append(int(evaluation["figure"]))
+                raise Exception("Shouldn't be possible")
 
             is_micrograph_bool = (
                 label["isMicrograph"] == False
@@ -202,45 +199,92 @@ def get_precision_recall(
 
             total_n_fig += 1
         total_n_papers += 1
-    print(tp_graph, tn_graph, fp_graph, fn_graph)
-    print(correct_instrument, correct_instrument / (tp_graph + fn_graph))
-    print(correct_mat, correct_mat / (tp_graph + fn_graph))
-    return is_micrograph, is_correct, papers, fig_nums
+
+    return (
+        [pred_micrograph, is_micrograph, is_correct],
+        [tp_graph, tn_graph, fp_graph, fn_graph],
+        [correct_mat, correct_instrument],
+        [total_n_fig, total_n_papers],
+    )
+
+
+FONT_DICT = {"fontsize": 26, "font": "Arial"}
+
+
+def plot_confusion_matrix(y_pred, y_true, title: str, cmap_name: str = "Blues") -> None:
+    plt.figure()
+    cm_display = ConfusionMatrixDisplay.from_predictions(
+        y_true,
+        y_pred,
+        labels=[0, 1],
+        cmap=plt.get_cmap(cmap_name),
+        display_labels=["False", "True"],
+        text_kw=FONT_DICT,
+    )
+    cm_display.ax_.set_title(
+        title,
+        fontdict={"fontsize": 28, "font": "Arial"},
+    )
+    cm_display.ax_.set_ylabel("Ground Truth", fontdict=FONT_DICT)
+    cm_display.ax_.set_xlabel("LLM prediction", fontdict=FONT_DICT)
+    cm_display.ax_.images[-1].colorbar.ax.tick_params(
+        labelsize=FONT_DICT["fontsize"] - 2
+    )
+    plt.yticks(fontsize=FONT_DICT["fontsize"])
+    plt.xticks(fontsize=FONT_DICT["fontsize"])
+    # plt.show()
+    plt.tight_layout()
+    plt.savefig(f"plots/{title}_confusion_matrix.png")
+
+
+def _get_all_matrices() -> None:
+    gpt_3_5_data = get_precision_recall(
+        "dataset/train/",
+        "gpt3_5_with_abstract",
+        "gpt3_5_with_abstract_eval",
+        eval_all=True,
+    )
+    gpt_4_data = get_precision_recall(
+        "dataset/train/", "gpt4_with_abstract", "gpt4_with_abstract_eval", eval_all=True
+    )
+
+    gpt_3_5_data_no_abstract = get_precision_recall(
+        "dataset/train/",
+        "gpt3_5_without_abstract",
+        "gpt3_5_without_abstract_eval_auto",
+        eval_all=False,
+    )
+    gpt_4_data_no_abstract = get_precision_recall(
+        "dataset/train/",
+        "gpt4_without_abstract",
+        "gpt4_without_abstract_eval_auto",
+        eval_all=False,
+    )
+
+    data = [gpt_3_5_data, gpt_4_data, gpt_3_5_data_no_abstract, gpt_4_data_no_abstract]
+    titles = [
+        "GPT3.5 with abstract",
+        "GPT4 with abstract",
+        "GPT3.5 no abstract",
+        "GPT4 no abstract",
+    ]
+    cmaps = ["Reds", "Blues", "Oranges", "Greens"]
+
+    for i in range(4):
+        y_pred, y_true = np.array(data[i][0][0]), np.array(data[i][0][1])
+
+        n_fig = data[i][3][0]
+        print(n_fig)
+        mat_acc, instrument_acc = data[i][2][0] / np.sum(y_true), data[i][2][
+            1
+        ] / np.sum(y_true)
+        print(mat_acc, instrument_acc)
+        plot_confusion_matrix(y_pred, y_true, titles[i], cmaps[i])
 
 
 if __name__ == "__main__":
     # get_precision_recall(
     #    "dataset/train/", "gpt3_5_without_abstract", "gpt3_5_without_abstract_eval_auto"
     # )
-    gpt_3_5_graph, gpt_3_5_correct, gpt_3_5_papers, gpt_3_5_figs = get_precision_recall(
-        "dataset/train/",
-        "gpt3_5_with_abstract",
-        "gpt3_5_with_abstract_eval",
-        eval_all=True,
-    )
-    gpt_4_graph, gpt_4_correct, gpt_4_papers, gpt_4_figs = get_precision_recall(
-        "dataset/train/", "gpt4_with_abstract", "gpt4_with_abstract_eval", eval_all=True
-    )
-
-    errors = []
-    papers = []
-    nums = []
-    for i in range(len(gpt_3_5_graph)):
-        if gpt_3_5_graph[i] != gpt_4_graph[i]:
-            # print(i, gpt_3_5_graph[i], gpt_4_graph[i])
-            errors.append(i)
-            papers.append(gpt_3_5_papers[i])
-            nums.append(gpt_4_figs[i])
-    print(len(errors))
-    # print(len(set(papers)), len(set(gpt_3_5_papers)))
-    unique_papers = list(set(papers))
-    with open("possible_errors.txt", "w+") as f:
-        for p, n in zip(papers, nums):
-            f.writelines(f"{p}  {n}\n")
-
-    # get_precision_recall("dataset/train/", "human", "gpt4_with_abstract_eval")
-    # train_test_split("dataset", n_train=1500, filter_term="arxiv")
-
-
-# w/out abstract: 291 1796 27 93
-# w/ abstract 383 1607 110 107
+    # evaluate_labels("dataset/train/", "gpt4_without_abstract")
+    _get_all_matrices()

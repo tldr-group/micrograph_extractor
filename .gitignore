@@ -169,6 +169,7 @@ dataset/*
 tmp/*
 scratchpad.ipynb
 old/*
+plots/*
 
 
 /micrograph_dataset/
