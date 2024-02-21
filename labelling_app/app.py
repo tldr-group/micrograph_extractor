@@ -80,16 +80,27 @@ def get_fig_and_subfig_n(img_path: str) -> Tuple[int, int]:
     return (int(fig_n), int(sufig_n))
 
 
-def get_only_figures(img_paths: List[str]) -> List[str]:
+def get_fig_subfig_n(path: str) -> Tuple[int, int]:
+    return (int(path.split("_")[-2]), int(path.split("_")[-1].split(".")[0]))
+
+
+def get_only_figures(img_paths: List[str], subfigures: bool = False) -> List[str]:
     out_paths = []
     for path in img_paths:
         n_underscore = path.count("_")
-        if n_underscore == 2:
+        if n_underscore == 2 and subfigures is False:
             val = int(path.split("_")[-1].split(".")[0])
             out_paths.append((path, val))
+        elif n_underscore == 3 and subfigures is True:
+            f_n, s_n = get_fig_and_subfig_n(path)
+            out_paths.append((path, f_n, s_n))
         else:
             pass
-    correct_order = sorted(out_paths, key=lambda x: x[1])
+
+    if subfigures:
+        correct_order = sorted(out_paths, key=lambda x: (x[1], x[2]))
+    else:
+        correct_order = sorted(out_paths, key=lambda x: x[1])
     paths = [x[0] for x in correct_order]
     return paths
 
@@ -278,6 +289,7 @@ class App(ttk.Frame):
         self.root = root
         self.root.geometry(f"{2*HALF_W}x{2*HALF_W}")
         self.root.bind("<Return>", self._enter_pressed)
+        self.root.bind("`", self.toggle_full_img)
 
         self.pack_widgets()
         self.intro_modal()
@@ -285,13 +297,17 @@ class App(ttk.Frame):
         self.start: int
         self.n: int
         self.label_mode: LabelTypes = "none"
+        self.label_subfigs: bool = True
+        self.show_full: bool = False
+
         self.paper_idx: int = 0
         self.figure_idx: int = 0
         self.total_figures: int = 0
+
         self.paper_paths: List[str] = []
         self.fig_comments: List[str] = []
 
-        self.only_missing = True
+        self.only_missing = False
 
         self.current_paper_data: List[dict] = []
         self.current_paper_eval: List[dict] = []
@@ -299,6 +315,8 @@ class App(ttk.Frame):
         self.start_t = time()
 
         # self.switch_to_evaluate()
+
+    # TODO: add keyborad hotkey to show full image in subfigure label mode
 
     def _set_folder(self) -> None:
         self.dir = open_file_dialog_return_fps()
@@ -319,6 +337,18 @@ class App(ttk.Frame):
         self.n = len(self.paper_paths)
         self.load_paper(self.paper_paths[0])
 
+    def remap_captions_fig_nums(
+        self, img_paths: List[str], captions: List[str], fig_nums: List[str]
+    ) -> None:
+        new_captions, new_fig_nums = [], []
+        for path in img_paths:
+            f_n = path.split("_")[-2]
+            f_n_idx = fig_nums.index(f_n)
+            new_captions.append(captions[f_n_idx])
+            new_fig_nums.append(f_n)
+        self.captions = new_captions
+        self.figure_nums = new_fig_nums
+
     def load_paper(self, path: str) -> None:
         print(path)
         metadata_path = f"{self.dir}/{path}/paper_data.json"
@@ -330,17 +360,22 @@ class App(ttk.Frame):
         self.abstract_text_var.set(self.metadata["abstract"])
 
         self.captions, self.figure_nums = self.load_captions(captions_path)
-        self.img_paths = get_only_figures(listdir(imgs_path))
+        self.img_paths = get_only_figures(listdir(imgs_path), self.label_subfigs)
+        if self.label_subfigs:
+            # remap captions and figures to extend to number of subfigures
+            self.remap_captions_fig_nums(
+                self.img_paths, self.captions, self.figure_nums
+            )
+            self.caption_text_var.set(self.captions[0])
         print(self.img_paths)
         if len(imgs_path) == 0:
-            print("No papers!")
+            print("No imgs!")
             self.new_paper()
         self.total_figures = len(self.img_paths)
 
         self.load_img(f"{self.dir}/{path}/imgs/{self.img_paths[0]}")
 
     def load_captions(self, captions_path: str) -> Tuple[List[str], List[str]]:
-        # assumes no missing figures - wrong assumption
         captions_dict: List[dict] = load_json(captions_path)  # type: ignore
 
         valid_figures: List[dict] = filter(
@@ -349,8 +384,6 @@ class App(ttk.Frame):
         figure_dict = sorted(valid_figures, key=lambda x: int(x["name"]))
         figure_nums = list(map(lambda x: x["name"], figure_dict))
         captions = list(map(lambda x: x["caption"], figure_dict))
-
-        # TODO: make this mapping a dict of figure name to caption so not indexing a list later
 
         print(figure_nums)
         self.caption_text_var.set(captions[0])
@@ -371,6 +404,26 @@ class App(ttk.Frame):
         self.photo_img = ImageTk.PhotoImage(img)
         self.img.configure(image=self.photo_img)
 
+    def toggle_full_img(self, event=None) -> None:
+        # get full path name from subfigure path, show w/ load img
+        # else show w/ load img
+        if self.show_full is False and self.label_subfigs is True:
+            self.show_full = True
+            path, ext = self.img_paths[self.figure_idx].split(".")
+            print(path)
+            last_idx = path.rfind("_")
+            new_path = path[:last_idx] + f".{ext}"
+            self.load_img(
+                f"{self.dir}/{self.paper_paths[self.paper_idx]}/imgs/{new_path}"
+            )
+        elif self.show_full is True and self.label_subfigs is True:
+            self.show_full = False
+            self.load_img(
+                f"{self.dir}/{self.paper_paths[self.paper_idx]}/imgs/{self.img_paths[self.figure_idx]}"
+            )
+        else:
+            pass
+
     def add_pressed(self) -> None:
         comment: str = str(self.comments.get())
         self.fig_comments.append(comment)
@@ -388,10 +441,15 @@ class App(ttk.Frame):
 
         new_t = time()
         data: dict
+        # should i just get subfig n from img_path instead?
+        _, subfig_n = get_fig_subfig_n(self.img_paths[self.figure_idx])
+        subfig_n = "0" if self.label_subfigs == False else str(subfig_n)
+
         try:
             if not is_micrograph:
                 data = {
                     "figure": self.figure_nums[self.figure_idx],
+                    "subfigure": subfig_n,
                     "isMicrograph": is_micrograph,
                     "instrument": "none",
                     "material": "none",
@@ -400,6 +458,7 @@ class App(ttk.Frame):
             else:
                 data = {
                     "figure": self.figure_nums[self.figure_idx],
+                    "subfigure": subfig_n,
                     "isMicrograph": is_micrograph,
                     "instrument": self.instrument.get(),
                     "material": self.material.get(),
@@ -411,8 +470,11 @@ class App(ttk.Frame):
             pass
 
     def add_eval(self) -> None:
+        _, subfig_n = get_fig_subfig_n(self.img_paths[self.figure_idx])
+        subfig_n = "0" if self.label_subfigs == False else str(subfig_n)
         data = {
             "figure": self.figure_nums[self.figure_idx],
+            "subfigure": subfig_n,
             "isMicrograph_correct": self.micrograph.get_value(2),
             "instrument_correct": self.instrument.get_value(2),
             "material_correct": self.material.get_value(2),
@@ -421,7 +483,6 @@ class App(ttk.Frame):
 
     def confirm_pressed(self) -> None:
         # fig, subfig = get_fig_and_subfig_n(self.img_paths[self.figure_idx])
-        # TODO: add check if in evaluate mode and save matches to labesl
 
         if self.label_mode == "none":
             self.add_label()
@@ -429,18 +490,15 @@ class App(ttk.Frame):
             self.add_eval()
 
         self.fig_comments = []
-        # this is completelty wrong if figures are not monotonic.
+
         self.figure_idx += 1
         self.start_t = time()
         print(f"Figure [{self.figure_idx} / {self.total_figures}]")
 
+        # if we're in subfig mode, img paths wont match captions
+
         if self.figure_idx >= self.total_figures:
-            self.micrograph.set_value(False)
-            self.instrument.set_value("SEM")
-            self.micrograph.set_value(False, 1)
-            self.instrument.set_value("SEM", 1)
-            self.material.reset()
-            self.comments.reset()
+            self.reset_gui()
             self.new_paper()
         else:
             caption_idx = self.figure_idx
@@ -450,19 +508,25 @@ class App(ttk.Frame):
             except FileNotFoundError:
                 self.confirm_pressed()
 
-            self.micrograph.set_value(False)
-            self.instrument.set_value("SEM")
-            self.micrograph.set_value(False, 1)
-            self.instrument.set_value("SEM", 1)
-            self.material.reset()
-            self.comments.reset()
+            self.reset_gui()
 
             if self.label_mode != "none":
                 self.switch_to_evaluate(self.label_mode)
 
+    def reset_gui(self) -> None:
+        self.micrograph.set_value(False)
+        self.instrument.set_value("SEM")
+        self.micrograph.set_value(False, 1)
+        self.instrument.set_value("SEM", 1)
+        self.material.reset()
+        self.comments.reset()
+
     def save_labels(
         self, data: dict, path: str, fname: str = "labels", key: str = "human"
     ) -> None:
+        if self.label_subfigs:
+            fname = "subfig_" + fname
+
         try:
             with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
                 prev_data = load(f)
@@ -542,6 +606,8 @@ class App(ttk.Frame):
     def load_label_data(
         self, label_type: LabelTypes, path: str, fname: str = "labels"
     ) -> dict:
+        if self.label_subfigs:
+            fname = "subfig_" + fname
 
         with open(f"{self.dir}/{path}/{fname}.json", "r") as f:
             data = json.load(f)
