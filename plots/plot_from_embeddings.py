@@ -1,4 +1,4 @@
-from os import listdir
+from os import listdir, getcwd
 from json import load
 import csv
 import numpy as np
@@ -8,7 +8,7 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 np.random.seed(122)
-
+print(getcwd())
 import torch
 from MatSciBERT.normalize_text import normalize
 from transformers import AutoModel, AutoTokenizer
@@ -17,7 +17,8 @@ from typing import List, Tuple, TypeAlias, Literal
 from dataclasses import dataclass
 
 
-save_embeddings = True
+save_embeddings = False  # True
+
 if save_embeddings:
     tokenizer = AutoTokenizer.from_pretrained("m3rg-iitd/matscibert")
     model = AutoModel.from_pretrained("m3rg-iitd/matscibert")
@@ -209,7 +210,7 @@ DATA_YRANGE = (
     110,
 )  # pca, avg (-6, 7) #pca, avg (-6, 10) #pca sum (-100, 150) #pca, sum, comments (-200, 250)
 CANV_SIZE = (8000, 8000)
-BORDER_WIDTH = 4
+BORDER_WIDTH = 8
 
 
 def radial_rescale(x: int, y: int, max_scale: int = 120) -> Tuple[int, int]:
