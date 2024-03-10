@@ -12,7 +12,7 @@ from typing import Literal, Tuple, List
 
 import re
 
-# at 99 today
+# problem - if it's not split model says not micrograph - need to relabel?
 
 FONT = ("", 14)
 LARGER_FONT = ("", 16)
@@ -136,14 +136,18 @@ def get_paths_missing_labels() -> List[str]:
 def get_paths_missing_eval() -> List[str]:
     paths = []
     missing_evals_count = 0
-    for path in listdir("dataset/train"):
+    for path in listdir("dataset/vlm_results"):
         try:
-            with open(f"dataset/train/{path}/labels.json") as f:
+            with open(f"dataset/vlm_results/{path}/subfig_labels.json") as f:
                 try:
                     data = load(f)
                 except:
                     continue
+        except NotADirectoryError:
+            pass
         except FileNotFoundError:
+            missing_evals_count += 1
+            paths.append(path)
             continue
 
         missing_eval = True
@@ -307,7 +311,7 @@ class App(ttk.Frame):
         self.paper_paths: List[str] = []
         self.fig_comments: List[str] = []
 
-        self.only_missing = False
+        self.only_missing = True
 
         self.current_paper_data: List[dict] = []
         self.current_paper_eval: List[dict] = []

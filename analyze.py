@@ -101,6 +101,148 @@ def detect_composite_image_from_caption(caption: str) -> bool:
         return False
 
 
+def _check_list(string: str, substrings: List[str]) -> bool:
+    match = False
+    for sub in substrings:
+        if sub in string:
+            match = True
+    return match
+
+
+def get_instrument(suggest_instrument: str) -> str:
+
+    lower = suggest_instrument.lower()
+    if _check_list(lower, ["eds", "edx", "energy-dispersive"]):
+        return "EDX"
+    elif _check_list(lower, ["stem", "scanning transmission electron microscopy"]):
+        return "STEM"
+    elif _check_list(lower, ["tem", "transmission electron microscopy"]):
+        return "TEM"
+    elif _check_list(lower, ["optical", "rfm", "reflected light"]):
+        return "OPTICAL"
+    elif _check_list(lower, ["fluorescence", "fluorescence microscopy"]):
+        return "FM"
+    elif _check_list(lower, ["sem", "scanning electron microscopy"]):
+        return "SEM"
+    elif _check_list(lower, ["afm", "atomic force microscopy"]):
+        return "AFM"
+    else:
+        return "OTHER"
+
+
+def get_is_micrograph(caption: str) -> bool:
+    lower = caption.lower()
+    if _check_list(lower, ["image", "micrograph"]):
+        return True
+    else:
+        return False
+
+
+def regex_labelling(path: str, greedy: bool = False) -> None:
+    for paper in listdir(f"{path}"):
+
+        try:
+            with open(f"{path}{paper}/labels.json") as f:
+                try:
+                    labels_data = load(f)
+                except:
+                    continue
+            with open(f"{path}{paper}/captions.json") as f:
+                try:
+                    captions_data = load(f)
+                except:
+                    continue
+        except FileNotFoundError:
+            continue
+
+        regex_eval = []
+        for item in captions_data:
+            print(item["figType"])
+            if item["figType"] == "Figure":
+                caption = item["caption"]
+                instrument = get_instrument(caption)
+                image_mentioned = get_is_micrograph(caption)
+                if greedy:
+                    is_micrograph = image_mentioned or instrument != "OTHER"
+                else:
+                    is_micrograph = image_mentioned
+                instrument = "none" if instrument == "OTHER" else instrument
+                data = {
+                    "figure": item["name"],
+                    "isMicrograph": is_micrograph,
+                    "instrument": instrument,
+                }
+                regex_eval.append(data)
+
+        name = "regex_greedy" if greedy else "regex_simple"
+        labels_data[f"{name}"] = regex_eval
+        with open(f"{path}{paper}/labels.json", "w") as f:
+            dump(labels_data, f, ensure_ascii=False, indent=4)
+
+
+def auto_eval_regex(
+    path: str, which: str = "greedy", plot_matrix: bool = False
+) -> Tuple:
+    results = get_precision_recall(
+        path, "gpt4_with_abstract", "gpt4_with_abstract_eval"
+    )
+
+    j = 0
+    print(len(results[0][2]))
+    tp_graph, tn_graph, fp_graph, fn_graph = 0, 0, 0, 0
+    correct_instrument = 0
+
+    y_pred = []
+    y_true = results[0][1]
+
+    for paper in listdir(path):
+        try:
+            with open(f"{path}{paper}/labels.json") as f:
+                try:
+                    data = load(f)
+                except:
+                    continue
+        except FileNotFoundError:
+            continue
+
+        try:
+            labels = data[f"regex_{which}"]
+            gpt4_labels = data["gpt4_with_abstract"]
+            gpt4_evals = data["gpt4_with_abstract_eval"]
+        except KeyError:
+            continue
+
+        if len(gpt4_labels) != len(gpt4_evals):
+            continue
+
+        for i in range(len(labels)):
+            label = labels[i]
+            # fig_num = int(label["figure"])
+            # we're nnow comparing is_micro to is-micro so diff to other one
+            if label["isMicrograph"] == True and y_true[j] == True:
+                y_pred.append(1)
+                tp_graph += 1
+            elif label["isMicrograph"] == False and y_true[j] == False:
+                y_pred.append(0)
+                tn_graph += 1
+            elif label["isMicrograph"] == True and y_true[j] == False:
+                y_pred.append(1)
+                fp_graph += 1
+            elif label["isMicrograph"] == False and y_true[j] == True:
+                y_pred.append(0)
+                fn_graph += 1
+            else:
+                raise Exception("Shouldn't be possible")
+            j += 1
+
+    if plot_matrix:
+        cmap = "Greys" if which == "greedy" else "Purples"
+        plot_confusion_matrix(y_pred, y_true, f"{which} regex", cmap)
+
+    print(tp_graph, tn_graph, fp_graph, fn_graph)
+    return (tp_graph, tn_graph, fp_graph, fn_graph)
+
+
 def get_precision_recall(
     path: str,
     which_labels: str = "gpt3_5_with_abstract",
@@ -225,8 +367,10 @@ def plot_confusion_matrix(y_pred, y_true, title: str, cmap_name: str = "Blues") 
         title,
         fontdict={"fontsize": 28, "font": "Arial"},
     )
+
+    x_label = "LLM prediction" if "gpt" in title else "Prediction"
     cm_display.ax_.set_ylabel("Ground Truth", fontdict=FONT_DICT)
-    cm_display.ax_.set_xlabel("LLM prediction", fontdict=FONT_DICT)
+    cm_display.ax_.set_xlabel(x_label, fontdict=FONT_DICT)
     cm_display.ax_.images[-1].colorbar.ax.tick_params(
         labelsize=FONT_DICT["fontsize"] - 2
     )
@@ -287,4 +431,7 @@ if __name__ == "__main__":
     #    "dataset/train/", "gpt3_5_without_abstract", "gpt3_5_without_abstract_eval_auto"
     # )
     # evaluate_labels("dataset/train/", "gpt4_without_abstract")
-    _get_all_matrices()
+    # _get_all_matrices()
+    # regex_labelling("dataset/train/", True)
+    # regex_labelling("dataset/train/", False)
+    auto_eval_regex("dataset/train/", which="simple", plot_matrix=True)
