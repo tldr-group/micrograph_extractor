@@ -1,28 +1,24 @@
 # Micrograph Extractor
 
-Find, extract and describe all micrographs in a paper's `.pdf` using (V)LLMs. When applied to a large corpus of open-access papers, this should produce a large, varied library of micrographs with weak labels detailing the imaging technique, material studied and other useful information.
+Scripts for creating, analyzing and evaluating an LLM-labelled micrograph dataset from materials science preprints.   
 
-This involves 3 steps:
-1) Collection of a large amount of open-access papers that are likely to include micrographs from preprint servers like [arxiv](https://arxiv.org/), [chemrxiv](https://chemrxiv.org/engage/chemrxiv/public-dashboard) and [biorxiv](https://www.biorxiv.org/). arxiv has an [API for metadata](https://info.arxiv.org/help/api/index.html) for bulk download based on queries, limited at a rate of 1 request per 3 seconds. It might be easier to only download articles that fulfil a search query, by pinging `export.arxiv.org`, which is limited to 4 requests per second with a 1 second sleep after. 
-2) Extracting all figures and captions from a given `.pdf`, via a `.pdf` scraper like [pypdf](https://pypi.org/project/pypdf/), [PDFigCapX](https://github.com/pengyuanli/PDFigCapX) or [pdffigures2](https://github.com/allenai/pdffigures2). Composite figures (ones with a (a), (b), (c), ...) will need to be decomposed if being saved later, potentially by looking for whitespace between sub-figures.
-3) Querying a (V)LLM with the image + figure caption, asking it a few questions about the figure, namely if it has a micrograph(s), what instrument was used, which material was used, does it have a scale-bar *etc*. 
 
-## Questions:
+Method:
+1) Collects a large amount of open-access papers that are likely to include micrographs from preprint servers like  and [biorxiv](https://www.biorxiv.org/). arxiv has an [API for metadata](https://info.arxiv.org/help/api/index.html) for bulk download based on queries, limited at a rate of 1 request per 3 seconds. `export.arxiv.org` is the API-portal and is limited to 4 requests per second with a 1 second sleep after. 
+2) Extracts all figures and captions from a given `.pdf`, via the [pdffigures2](https://github.com/allenai/pdffigures2) `.pdf` scraper. Composite figures (ones with a (a), (b), (c), ...) are decomposed by looking for whitespace between sub-figures, thresholding and detecting connected-components.
+3) A (V)LLM is queried with the figure caption and/or image, asking it a few questions about the figure, namely if it has a micrograph(s), what instrument was used, which material was imaged and whether it have a scale-bar *etc*.
+4) A custom gui in `labelling_app/`allows human labelling of scraped image/caption pairs and later comparison with LLM labels
 
-- How often does the (V)LLM correctly identify a micrograph?
-- How often does the (V)LLM correctly identify the imaging technique?
-- How often does the (V)LLM correctly identify the material?
-- How often does the (V)LLM correctly identify a scale-bar?
-- How does the performance change with different models? How does the performance compare to a simple regex?
-- Where does it go wrong, and why?
-- How does performance change when the level of information in the prompt changes (*i.e,* explaining different imaging techniques, telling it it's a materials scientist, explaining what a micrograph is)
-- Is a VLM needed or does the LLM work well enough on the caption alone? 
+## Scraping:
 
-## Models:
+1) Find and store the metadata (title, abstract, authors, DOI, date and download URL) of all papers that match the search query `microscopy' on a given preprint server ([arxiv](https://arxiv.org/), [chemrxiv](https://chemrxiv.org/engage/chemrxiv/public-dashboard)). We chose a random sample of 500 chemRxiv papers as a demonstration.
+2) Download each paper to a temporary foldeer, extracting all figure/caption pairs and storing them alongside the metadata. 
 
-### Extracting:
-- [paperscraper](https://github.com/PhosphorylatedRabbits/paperscraper): python library for scraping metadata and/or pdfs from arxiv, chemrxiv *etc*. It can scrape based on a keyword query.
-- [pdffigures2](https://github.com/allenai/pdffigures2): scala program for extracting figures and associated captions from figures. Only tested on computer science papers so will see how well it translates to pre-prints.
+## Extracting:
+
+### Paired figure/caption extraction  
+
+[pdffigures2](https://github.com/allenai/pdffigures2): scala program for extracting figures and associated captions from figures.
 
 For single files:
 ```
@@ -34,16 +30,38 @@ For batch processing a whole directory and then saving files to imgs/ and captio
 sbt "runMain org.allenai.pdffigures2.FigureExtractorBatchCli /home/ronan/Documents/uni_work/phd/micrograph_extractor/data/ -m /home/ronan/Documents/uni_work/phd/micrograph_extractor/outputs/imgs/ -d /home/ronan/Documents/uni_work/phd/micrograph_extractor/outputs/data/ -i 200"
 ```
 
-### LLMS:
-- [GPT-4](https://openai.com/blog/openai-api): captions only, will cost money (but not much?).
-- [llama](https://github.com/facebookresearch/llama): can be deployed locally.
-- [llama.cpp](https://github.com/ggerganov/llama.cpp): can run on lower-end devices.
+### Subfigure detection
+
+1) Threshold segment whole image into pixels that are white and that are not
+2) Perform binary opening to remove small gaps
+3) Do connected-component analysis of non-white regions and get bounding boxes per component
+
+NB: this assumes sub-figures are separated with white gutters of ~>2px. This is generally true, but not always - some figures have no whitespace (*i.e,* timeseries), which is relevant when performing VLM analysis later.  
 
 
-### VLMS:
-- [TinyGPT-V](https://github.com/DLYuanGod/TinyGPT-V): distilled VLM designed to run on low-end graphics cards (8GB RAM).
-- [GPT-4v](https://openai.com/blog/openai-api): captions + figure analysis, will cost money.
-- [llava](https://llava-vl.github.io/): 4 bit quantization -> could run on 12GB VRAM like ours.
+## Analysis
+
+### LLM analysis
+GPT3.5/4 was prompted with the figure's caption and abstract and asked to identify whether the associated figure contained a micrograph, and if so what technique (AFM, TEM, SEM, *etc.*) was used to image it and what material was being imaged, as well as any additional comments for, say, processing conditions. The `.json` structure for a figure that contained the micrograph was as follows:
+
+```
+{
+    "isMicrograph": "true",
+    "instrument": "Technique",
+    "material": "Description",
+    "comments": ["comment1", "comment2", "comment3"]
+}
+```
+We tested giving the LLM both the caption and abstract and just the caption - we found providing both worked the best (in terms of balancing sensitivty and specificity). The good performance is a function of how well-structured scientific paper captions tend to be. **In many ways, this is an easy task that only an LLM can do**. 
+
+### VLM analysis
+GPT3.5/4 is effective at detecting *if* a figure contains a micrograph, but it cannot tell you which sub-figure is the micrograph(s). To do this we analyzed each figure that GPT3.5/4 labelled as containing a micrograph and its extracted sub-figures. We fed the figure caption, paper abstract, specific sub-figure and the whole figure to GPT4-V and asked it if the specific sub-figure was a single micrograph (i.e, not a timeseries or unextracted figure). 
+
+
+### Regex
+
+
+### Evaluation
 
 
 ## Installation:
@@ -61,9 +79,3 @@ pip install -r requirements.txt
 ```
 .\build.sh
 ```
-
-## TODO:
-- evaluate GPT-4 subfigure labels
-- do confusion matrix & analysis on subfigs
-- do string matching label approach (regex)
-- do confusion matrix for string matching approach
