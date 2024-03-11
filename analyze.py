@@ -426,6 +426,35 @@ def _get_all_matrices() -> None:
         plot_confusion_matrix(y_pred, y_true, titles[i], cmaps[i])
 
 
+def merge_vlm_into_subfig_labels(path: str) -> None:
+    for paper in listdir(path):
+        try:
+            with open(f"{path}{paper}/subfig_labels.json") as f:
+                try:
+                    subfig_labels = load(f)
+                except:
+                    continue
+        except (FileNotFoundError, NotADirectoryError):
+            continue
+
+        try:
+            with open(f"{path}{paper}/labels_gpt4_vision_subfigure.json") as f:
+                try:
+                    vision_labels = load(f)
+                except:
+                    continue
+        except (FileNotFoundError, NotADirectoryError):
+            continue
+
+        subfig_labels["gpt_4_vision"] = vision_labels
+
+        try:
+            with open(f"{path}{paper}/subfig_labels.json", "w") as f:
+                dump(subfig_labels, f, ensure_ascii=False, indent=4)
+        except:
+            continue
+
+
 if __name__ == "__main__":
     # get_precision_recall(
     #    "dataset/train/", "gpt3_5_without_abstract", "gpt3_5_without_abstract_eval_auto"
@@ -434,4 +463,6 @@ if __name__ == "__main__":
     # _get_all_matrices()
     # regex_labelling("dataset/train/", True)
     # regex_labelling("dataset/train/", False)
-    auto_eval_regex("dataset/train/", which="simple", plot_matrix=True)
+    # auto_eval_regex("dataset/train/", which="simple", plot_matrix=True)
+
+    merge_vlm_into_subfig_labels("dataset/vlm_results/")

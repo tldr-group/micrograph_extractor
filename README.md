@@ -61,3 +61,9 @@ pip install -r requirements.txt
 ```
 .\build.sh
 ```
+
+## TODO:
+- evaluate GPT-4 subfigure labels
+- do confusion matrix & analysis on subfigs
+- do string matching label approach (regex)
+- do confusion matrix for string matching approach

@@ -311,7 +311,7 @@ class App(ttk.Frame):
         self.paper_paths: List[str] = []
         self.fig_comments: List[str] = []
 
-        self.only_missing = True
+        self.only_missing = False
 
         self.current_paper_data: List[dict] = []
         self.current_paper_eval: List[dict] = []
@@ -571,11 +571,15 @@ class App(ttk.Frame):
         human_label_data = self.load_label_data(
             "human", self.paper_paths[self.paper_idx]
         )
+        # TODO: adapt this for subfigure mode
         current_figure_number = human_label_data[self.figure_idx]["figure"]
 
         all_label_data = self.load_label_data(
             label_type, self.paper_paths[self.paper_idx]
         )
+        print(all_label_data)
+        print(human_label_data)
+        print(self.figure_nums)
 
         fig_label_data = all_label_data.get(str(current_figure_number))
 
@@ -760,6 +764,7 @@ class App(ttk.Frame):
                 "gpt3_5_without_abstract",
                 "gpt4_with_abstract",
                 "gpt4_without_abstract",
+                "gpt_4_vision",
                 "regex",
             ],
             font=LARGER_FONT,
