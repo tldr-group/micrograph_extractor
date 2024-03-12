@@ -2,13 +2,6 @@
 
 Scripts for creating, analyzing and evaluating an LLM-labelled micrograph dataset from materials science preprints.   
 
-
-Method:
-1) Collects a large amount of open-access papers that are likely to include micrographs from preprint servers like  and [biorxiv](https://www.biorxiv.org/). arxiv has an [API for metadata](https://info.arxiv.org/help/api/index.html) for bulk download based on queries, limited at a rate of 1 request per 3 seconds. `export.arxiv.org` is the API-portal and is limited to 4 requests per second with a 1 second sleep after. 
-2) Extracts all figures and captions from a given `.pdf`, via the [pdffigures2](https://github.com/allenai/pdffigures2) `.pdf` scraper. Composite figures (ones with a (a), (b), (c), ...) are decomposed by looking for whitespace between sub-figures, thresholding and detecting connected-components.
-3) A (V)LLM is queried with the figure caption and/or image, asking it a few questions about the figure, namely if it has a micrograph(s), what instrument was used, which material was imaged and whether it have a scale-bar *etc*.
-4) A custom gui in `labelling_app/`allows human labelling of scraped image/caption pairs and later comparison with LLM labels
-
 ## Scraping:
 
 1) Find and store the metadata (title, abstract, authors, DOI, date and download URL) of all papers that match the search query `microscopy' on a given preprint server ([arxiv](https://arxiv.org/), [chemrxiv](https://chemrxiv.org/engage/chemrxiv/public-dashboard)). We chose a random sample of 500 chemRxiv papers as a demonstration.
@@ -57,12 +50,16 @@ We tested giving the LLM both the caption and abstract and just the caption - we
 ### VLM analysis
 GPT3.5/4 is effective at detecting *if* a figure contains a micrograph, but it cannot tell you which sub-figure is the micrograph(s). To do this we analyzed each figure that GPT3.5/4 labelled as containing a micrograph and its extracted sub-figures. We fed the figure caption, paper abstract, specific sub-figure and the whole figure to GPT4-V and asked it if the specific sub-figure was a single micrograph (i.e, not a timeseries or unextracted figure). 
 
+Any single micrographs were placed into a the dataset in `micrographs/`, with their labels, DOI, *etc.* in `micrographs/label.csv`.
+
 
 ### Regex
+We compared the accuracy of LLM micrograph detection to two string-matching/regex approaches. The 'simple' regex said a micrograph was detected if the caption contained the substring "image" or "micrograph" anywhere. The 'greedy' regex said a micrograph was detected if any instrument name ("SEM" or "Scanning Electron Microscopy" or "TEM" *etc.*) was detected or if it contained "image" or "micrograph" as before.
 
+The 'simple' regex scheme was remarkably effective (if slightly conservative), probably because scientific captions are well-structured. The 'greedy' regex had too many false positives, as could be expected.
 
 ### Evaluation
-
+We wrote a custom labelling app (in `labelling_app/`) that allows humans to label the extracted figures and sub-figures and compare the LLM/regex labels to the human labels for evaluation.
 
 ## Installation:
 
