@@ -6,36 +6,16 @@ Scripts for creating, analyzing and evaluating an LLM-labelled micrograph datase
 
 ## Installation:
 
-NB: assumes a POSIX enviroment (macOS/ubuntu) and that conda is installed. 
+NB: assumes a POSIX enviroment (macOS/ubuntu). 
 
-1. From the root directory run (interactive mode needed for conda) 
+1. From the root directory run (interactive mode needed for venv) 
 ```
-bash -i build.sh
+sudo bash -i build.sh
 ```
 
-
-Alternative using virtual environments:
-
-1. Create a virtual environment in python:
+Alternative using conda:
 ```
-python3.10 -m venv .venv
-source venv/bin/activate
-```
-2. Install python dependencies:
-```
-pip install -r requirements.txt
-```
-3. Clone pdffigures2
-```
-git clone https://github.com/allenai/pdffigures2
-````
-4. Install the scala build tool (sbt)
-```
-echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
-echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt_old.list
-curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
-sudo apt-get update
-sudo apt-get install sbt
+sudo bash -i build_conda.sh
 ```
 
 ## Scraping:

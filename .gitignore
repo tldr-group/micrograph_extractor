@@ -187,3 +187,6 @@ run_vision_model.py
 
 copy_over.py
 *.txt
+test_data*.png
+test_data/*.jpg
+test_data/*.json
