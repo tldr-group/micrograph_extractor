@@ -15,3 +15,10 @@ sudo apt-get install sbt
 python3.10 -m venv .venv
 source .venv/bin/activate
 pip install -r build_scripts/requirements.txt
+
+# script run in sudo so need to give user access to cloned pdffigures dir
+# (for python scripts later)
+sudo chmod -R 777 pdffigures2
+# build the thing - this was what caused the previous errors
+cd pdffigures2
+sudo sbt

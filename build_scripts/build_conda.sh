@@ -12,8 +12,6 @@ curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89
 sudo apt-get update
 sudo apt-get install sbt
 
-
-
 # from user cdub (https://stackoverflow.com/questions/70597896/check-if-conda-env-exists-and-create-if-not-in-bash)
 find_in_conda_env(){
     conda env list | grep "${@}" >/dev/null 2>/dev/null
@@ -28,4 +26,10 @@ else
    conda activate extractor
 fi
 conda install --channel conda-forge --yes --file build_scripts/requirements.txt
-# pip install -r requirements.txt
+
+# script run in sudo so need to give user access to cloned pdffigures dir
+# (for python scripts later)
+sudo chmod -R 777 pdffigures2
+# build the thing
+cd pdffigures2
+sudo sbt
