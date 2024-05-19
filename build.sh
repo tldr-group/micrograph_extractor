@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 echo "cloning pdffigures2"
 # clone pdffigures2
@@ -13,5 +13,14 @@ sudo apt-get update
 sudo apt-get install sbt
 
 echo "creating conda env"
-conda env create -f environment.yaml
-conda activate extractor
+
+# from user cdub (https://stackoverflow.com/questions/70597896/check-if-conda-env-exists-and-create-if-not-in-bash)
+find_in_conda_env(){
+    conda env list | grep "${@}" >/dev/null 2>/dev/null
+}
+
+if find_in_conda_env ".*extractor.*" ; then
+   conda activate extractor
+else 
+    conda env create -f environment.yaml
+conda install --yes --file requirements.txt

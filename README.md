@@ -1,6 +1,42 @@
 # Micrograph Extractor
 
-Scripts for creating, analyzing and evaluating an LLM-labelled micrograph dataset from materials science preprints.   
+Scripts for creating, analyzing and evaluating an LLM-labelled micrograph dataset from materials science preprints.  
+
+
+
+## Installation:
+
+NB: assumes a POSIX enviroment (macOS/ubuntu) and that conda is installed. 
+
+1. From the root directory run (interactive mode needed for conda) 
+```
+bash -i build.sh
+```
+
+
+Alternative using virtual environments:
+
+1. Create a virtual environment in python:
+```
+python3.10 -m venv .venv
+source venv/bin/activate
+```
+2. Install python dependencies:
+```
+pip install -r requirements.txt
+```
+3. Clone pdffigures2
+```
+git clone https://github.com/allenai/pdffigures2
+````
+4. Install the scala build tool (sbt)
+```
+echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt_old.list
+curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+sudo apt-get update
+sudo apt-get install sbt
+```
 
 ## Scraping:
 
@@ -61,18 +97,3 @@ The 'simple' regex scheme was remarkably effective (if slightly conservative), p
 ### Evaluation
 We wrote a custom labelling app (in `labelling_app/`) that allows humans to label the extracted figures and sub-figures and compare the LLM/regex labels to the human labels for evaluation.
 
-## Installation:
-
-1. Create a virtual environment in python:
-```
-python3.10 -m venv .venv
-source venv/bin/activate
-```
-2. Install python dependencies:
-```
-pip install -r requirements.txt
-```
-3. Install pdffigures2 and scala build tool (sbt) using `build.sh` (right-click and tick 'allow running as a program')
-```
-.\build.sh
-```
