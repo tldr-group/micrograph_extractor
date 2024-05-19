@@ -26,4 +26,3 @@ exit
 EOF
 cd ..
 sudo chmod o+rwx -R pdffigures2
-python tests.py
