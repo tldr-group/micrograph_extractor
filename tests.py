@@ -2,8 +2,15 @@ from os import getcwd, makedirs
 from os.path import join
 from extract import single_pdf_extract_process, CWD
 from analyze import single_regex_label
-from llm_operations.run_llm_with_abstract import assistant
-from llm_operations.gpt_utils import extract_json_from_response
+
+llm_available = False
+try:
+    from llm_operations.run_llm_with_abstract import assistant
+    from llm_operations.gpt_utils import extract_json_from_response
+
+    llm_available = True
+except:
+    pass
 from labelling_app.app import load_json
 
 import unittest
@@ -81,6 +88,8 @@ class Tests(unittest.TestCase):
     def test_gpt(self):
         """Run LLM-based caption analysis on the captions. Requires the OPENAI_API_KEY environment
         variable to be set."""
+        if llm_available is False:
+            return
         labels_path = join(CWD, "test_data/analyze/labels.json")
         captions_path = join(CWD, "test_data/analyze/captions.json")
 
