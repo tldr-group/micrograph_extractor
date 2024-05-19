@@ -48,7 +48,9 @@ def extract_figures_captions(
     :return: exit code, 0 for success, 1 for failure
     :rtype: int
     """
-    run_str: str = f"{PDFF2_CMD} {abs_read_path} -m {abs_img_save_path} -d {abs_caption_save_path} -i {DPI} "
+    run_str: str = (
+        f"{PDFF2_CMD} {abs_read_path} -m {abs_img_save_path} -d {abs_caption_save_path} -i {DPI} "
+    )
     # close the quotation marks that form the sbt argument, either with command to ignore errors or just a quotation mark
     if continue_on_err is True:
         run_str += "-e "
