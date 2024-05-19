@@ -25,4 +25,5 @@ sudo -u $SUDO_USER sbt << EOF
 exit
 EOF
 cd ..
+sudo chmod o+rwx -R pdffigures2
 python tests.py
