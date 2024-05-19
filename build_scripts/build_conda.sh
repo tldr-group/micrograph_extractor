@@ -12,15 +12,20 @@ curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89
 sudo apt-get update
 sudo apt-get install sbt
 
-echo "creating conda env"
+
 
 # from user cdub (https://stackoverflow.com/questions/70597896/check-if-conda-env-exists-and-create-if-not-in-bash)
 find_in_conda_env(){
     conda env list | grep "${@}" >/dev/null 2>/dev/null
 }
 
-if find_in_conda_env ".*extractor.*" ; then
+if find_in_conda_env "extractor" ; then
+   echo "activating existing conda env"
    conda activate extractor
 else 
-    conda env create -f environment.yaml
-conda install --yes --file requirements.txt
+   echo "creating conda env"
+   conda env create -f build_scripts/environment.yaml
+   conda activate extractor
+fi
+conda install --channel conda-forge --yes --file build_scripts/requirements.txt
+# pip install -r requirements.txt
