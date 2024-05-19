@@ -186,6 +186,5 @@ run_vision_model.py
 /test/
 
 copy_over.py
-*.txt
 test_data/out
 test_data/processed
