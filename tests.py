@@ -1,8 +1,10 @@
 from os import getcwd, makedirs
 from os.path import join
-from extract import extract_figures_captions, single_pdf_extract_process, CWD
-from analyze import get_is_micrograph, single_regex_label
-from labelling_app.app import load_json, save_json
+from extract import single_pdf_extract_process, CWD
+from analyze import single_regex_label
+from llm_operations.run_llm_with_abstract import assistant
+from llm_operations.gpt_utils import extract_json_from_response
+from labelling_app.app import load_json
 
 import unittest
 
@@ -14,6 +16,15 @@ Potential causes:
 - FigureExtractor not built properly - make sure user permissions on pdffigures2/ set right and `sbt build` 
 has been successfully run in the `pdffigures2` directory
 - some bug in the folder structure/os mkdirs
+"""
+
+llm_fail_message = """
+No captions analyzed by GPT!
+Potential causes:
+- no OPENAI_API_KEY env variable set
+- no internet connection
+- timeout on the API request
+
 """
 
 abstract = """The mesostructure of porous electrodes used in lithium-ion batteries strongly inﬂuences cell performance. Accurate imaging of the
@@ -56,6 +67,7 @@ class Tests(unittest.TestCase):
         assert len(captions) > 0, extract_fail_message
 
     def test_regex(self):
+        """Run basic string matching caption/instrument analysis on the captions of the pdf."""
         labels_path = join(CWD, "test_data/analyze/labels.json")
         captions_path = join(CWD, "test_data/analyze/captions.json")
         out = single_regex_label(labels_path, captions_path)
@@ -63,6 +75,29 @@ class Tests(unittest.TestCase):
         assert (
             len(li) > 0
         ), "Failed to analyze captions with regex - files may be in the wrong place."
+        for figure_eval in li:
+            assert figure_eval["isMicrograph"] == True, "Incorrect regex eval"
+
+    def test_gpt(self):
+        """Run LLM-based caption analysis on the captions. Requires the OPENAI_API_KEY environment
+        variable to be set."""
+        labels_path = join(CWD, "test_data/analyze/labels.json")
+        captions_path = join(CWD, "test_data/analyze/captions.json")
+
+        labels_data = load_json(labels_path)
+        captions_data = load_json(captions_path)
+
+        llm_labels = []
+        for item in captions_data:
+            caption = item["caption"]
+            figure_type = item["figType"]
+            if figure_type == "Figure":
+                response = assistant(abstract, caption)
+                response_data = extract_json_from_response(response)
+                response_data["figure"] = captions_data["name"]
+                llm_labels.append(response_data)
+        labels_data["llm"] = llm_labels
+        assert len(llm_labels) > 0, llm_fail_message
 
 
 if __name__ == "__main__":
