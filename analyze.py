@@ -180,6 +180,33 @@ def regex_labelling(path: str, greedy: bool = False) -> None:
             dump(labels_data, f, ensure_ascii=False, indent=4)
 
 
+def single_regex_label(labels_path: str, captions_path: str) -> object:
+    with open(f"{labels_path}") as f:
+        labels_data = load(f)
+    with open(f"{captions_path}") as f:
+        captions_data = load(f)
+    regex_eval = []
+    for item in captions_data:
+        if item["figType"] == "Figure":
+            caption = item["caption"]
+            instrument = get_instrument(caption)
+            image_mentioned = get_is_micrograph(caption)
+            is_micrograph = image_mentioned
+            instrument = "none" if instrument == "OTHER" else instrument
+            data = {
+                "figure": item["name"],
+                "isMicrograph": is_micrograph,
+                "instrument": instrument,
+            }
+            regex_eval.append(data)
+
+    name = "regex"
+    labels_data[f"{name}"] = regex_eval
+    with open(f"{labels_path}", "w") as f:
+        dump(labels_data, f, ensure_ascii=False, indent=4)
+    return labels_data
+
+
 def auto_eval_regex(
     path: str, which: str = "greedy", plot_matrix: bool = False
 ) -> Tuple:
