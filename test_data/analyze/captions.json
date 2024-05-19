@@ -1,0 +1,101 @@
+[{
+  "caption": "Figure 4. Images of cathode cross-section prepared using kintsugi method. (a), (b) SEM-BSE images using CBS detector. (c), (d) SEM-BSE images using TLD. (e), (f) CBS image overlaid with segmentation false colouring, where green is active material, red is CBD, and blue is pore. (g), (h). Segmentation where white is pore, black is binder and gray is either active material or current collector. All scale bars are 5 μm.",
+  "captionBoundary": {
+    "x1": 303.9873046875,
+    "x2": 551.0984497070312,
+    "y1": 465.2589416503906,
+    "y2": 514.885498046875
+  },
+  "figType": "Figure",
+  "imageText": [],
+  "name": "4",
+  "page": 5,
+  "regionBoundary": {
+    "x1": 306.71999999999997,
+    "x2": 548.28,
+    "y1": 66.24,
+    "y2": 456.47999999999996
+  },
+  "renderDpi": 200,
+  "renderURL": "/home/ronan/Documents/uni_work/phd/test_me/micrograph_extractor/test_data/out/imgs/tmp-Figure4-1.png"
+}, {
+  "caption": "Figure 3. Kintsugi method results. (a) SEM-BSE cross-section image using CBS detector. (b) Composite of EDS images highlighting the distributions of Al (current collector), Ni (AM particles), Pt (pores), and C (CBD). (c) EDS image highlighting the presence of F (probably from the polyvinylidene fluoride binder). All scale bars are 10 μm.",
+  "captionBoundary": {
+    "x1": 36.0,
+    "x2": 283.0985107421875,
+    "y1": 557.8385620117188,
+    "y2": 598.4508056640625
+  },
+  "figType": "Figure",
+  "imageText": [],
+  "name": "3",
+  "page": 5,
+  "regionBoundary": {
+    "x1": 40.68,
+    "x2": 278.28,
+    "y1": 66.24,
+    "y2": 549.36
+  },
+  "renderDpi": 200,
+  "renderURL": "/home/ronan/Documents/uni_work/phd/test_me/micrograph_extractor/test_data/out/imgs/tmp-Figure3-1.png"
+}, {
+  "caption": "Figure 2. The cross-section preparation workflow using Helios Hydra PFIB-SEM. (a) Image of the sample arrangement relative inside the vacuum chamber. (b) deposition of the Pt-C mix protective layer on the top surface of cathode. (c) the material block and block face preparation. (d) Pt layer deposition on the block face; (e) the automated ASV run, removing the excess of Pt layer. (f) image of the kintsugi infiltrated block face at 54 nm resolution (Inset shows an example of the pot repaired using the traditional kintsugi method). The scale bar in (a) is 8 mm; in (b), (c) is 200 μm; and in (d)–(f) is 40 μm.",
+  "captionBoundary": {
+    "x1": 36.0,
+    "x2": 552.0257568359375,
+    "y1": 271.9361572265625,
+    "y2": 303.5341491699219
+  },
+  "figType": "Figure",
+  "imageText": [],
+  "name": "2",
+  "page": 4,
+  "regionBoundary": {
+    "x1": 74.88,
+    "x2": 513.0,
+    "y1": 66.24,
+    "y2": 263.52
+  },
+  "renderDpi": 200,
+  "renderURL": "/home/ronan/Documents/uni_work/phd/test_me/micrograph_extractor/test_data/out/imgs/tmp-Figure2-1.png"
+}, {
+  "caption": "Figure 1. NMC cathodes imaged using different techniques. Right column is a closer view of the central region of the left column. (a) Typical virtual crosssection of the cathode reconstructed from series of X-ray attenuation projections collected via a commercial micro CT (400 nm pixels). (b) Typical virtual crosssection of the cathode reconstructed from series of X-ray phase contrast projections collected with a synchrotron hard beam at ESRF ID16A-NI beamline (50 nm pixels).13 (c) Typical cross-section of NMC cathode prepared with Xe Plasma FIB-SEM instrument and imaged with SEM-BSE detector (20 nm pixels). The region highlighted in yellow shows cross sectioned particle on the imaging plane. The region highlighted in cyan shows what is probably a cross sectioned patch of CBD on the imaging plane. The region highlighted in magenta has ambiguous content as it appears to be the inner surface of an uninfiltrated pore. All scale bars are 20 μm.",
+  "captionBoundary": {
+    "x1": 36.0,
+    "x2": 552.0216674804688,
+    "y1": 437.8763427734375,
+    "y2": 496.516845703125
+  },
+  "figType": "Figure",
+  "imageText": [],
+  "name": "1",
+  "page": 2,
+  "regionBoundary": {
+    "x1": 74.88,
+    "x2": 513.0,
+    "y1": 66.24,
+    "y2": 429.47999999999996
+  },
+  "renderDpi": 200,
+  "renderURL": "/home/ronan/Documents/uni_work/phd/test_me/micrograph_extractor/test_data/out/imgs/tmp-Figure1-1.png"
+}, {
+  "caption": "Figure 5. High resolution image of crack network in single NMC particle. Scale bar is 5 μm.",
+  "captionBoundary": {
+    "x1": 304.95111083984375,
+    "x2": 551.9886474609375,
+    "y1": 321.7692565917969,
+    "y2": 335.3954772949219
+  },
+  "figType": "Figure",
+  "imageText": [],
+  "name": "5",
+  "page": 6,
+  "regionBoundary": {
+    "x1": 307.8,
+    "x2": 549.0,
+    "y1": 66.24,
+    "y2": 312.47999999999996
+  },
+  "renderDpi": 200,
+  "renderURL": "/home/ronan/Documents/uni_work/phd/test_me/micrograph_extractor/test_data/out/imgs/tmp-Figure5-1.png"
+}]

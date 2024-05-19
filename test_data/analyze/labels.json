@@ -1,0 +1,29 @@
+{
+    "regex": [
+        {
+            "figure": "4",
+            "isMicrograph": true,
+            "instrument": "SEM"
+        },
+        {
+            "figure": "3",
+            "isMicrograph": true,
+            "instrument": "EDX"
+        },
+        {
+            "figure": "2",
+            "isMicrograph": true,
+            "instrument": "SEM"
+        },
+        {
+            "figure": "1",
+            "isMicrograph": true,
+            "instrument": "SEM"
+        },
+        {
+            "figure": "5",
+            "isMicrograph": true,
+            "instrument": "none"
+        }
+    ]
+}
