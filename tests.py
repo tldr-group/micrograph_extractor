@@ -89,7 +89,9 @@ class Tests(unittest.TestCase):
         """Run LLM-based caption analysis on the captions. Requires the OPENAI_API_KEY environment
         variable to be set."""
         if llm_available is False:
-            return
+            assert (
+                llm_available
+            ), "Need to set OPENAI_API_KEY environment variable before LLM labelling"
         labels_path = join(CWD, "test_data/analyze/labels.json")
         captions_path = join(CWD, "test_data/analyze/captions.json")
 
