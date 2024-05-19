@@ -2,7 +2,7 @@ import re
 import openai
 import os
 import json
-from gpt_utils import *
+from .gpt_utils import *
 
 # TODO: only accept "figType": "Figure", add "llm" field
 
