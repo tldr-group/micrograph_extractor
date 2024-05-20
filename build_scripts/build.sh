@@ -27,4 +27,4 @@ EOF
 cd ..
 sudo chmod o+rwx -R pdffigures2
 # make sure venv has user permissions (so easy to delete)
-sudo chmod u+rwx -R .venv
+sudo chmod o+rwx -R .venv
