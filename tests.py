@@ -53,6 +53,8 @@ electrode materials and porous media in general."""
 
 
 class Tests(unittest.TestCase):
+    # add scraping test?
+
     def test_extraction(self):
         """Run figure/caption extractor on the test pdf `test_data/tmp.pdf`, splitting extracted figures
         into subfigures as well. Outputs original and sub-figures to `test_data/processed/` folder. Fails
