@@ -18,6 +18,8 @@ Alternative using conda:
 sudo bash -i build_scripts/build_conda.sh
 ```
 
+Note that if using mac, you will need the [brew](https://brew.sh/) package manager.
+
 ## Testing:
 
 From the root directory **with your virtual environment activated** run
@@ -25,7 +27,6 @@ From the root directory **with your virtual environment activated** run
 python tests.py
 ```
 This will run a test of the (sub-)figure & caption extraction alongside some basic caption analysis using string matching or GPT-4 on an example paper [(DOI 10.1149/1945-7111/ac7a68)](https://iopscience.iop.org/article/10.1149/1945-7111/ac7a68/meta).
-
 
 
 ## Code explanation:
