@@ -8,14 +8,14 @@ Scripts for creating, analyzing and evaluating an LLM-labelled micrograph datase
 
 NB: assumes a POSIX enviroment (macOS/ubuntu). 
 
-1. From the root directory run (interactive mode needed for venv) 
+From the root directory run (interactive mode needed for venv) 
 ```
-sudo bash -i build.sh
+sudo bash -i build_scripts/build.sh
 ```
 
 Alternative using conda:
 ```
-sudo bash -i build_conda.sh
+sudo bash -i build_scripts/build_conda.sh
 ```
 
 ## Testing:
