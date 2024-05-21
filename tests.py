@@ -11,7 +11,7 @@ try:
     llm_available = True
 except:
     pass
-from labelling_app.app import load_json
+from labelling_app.app import load_json, save_json
 
 import unittest
 
@@ -107,9 +107,10 @@ class Tests(unittest.TestCase):
             if figure_type == "Figure":
                 response = assistant(abstract, caption)
                 response_data = extract_json_from_response(response)
-                response_data["figure"] = captions_data["name"]
+                response_data["figure"] = item["name"]
                 llm_labels.append(response_data)
         labels_data["llm"] = llm_labels
+        save_json("test_data/analyze/labels.json", labels_data)
         assert len(llm_labels) > 0, llm_fail_message
 
 

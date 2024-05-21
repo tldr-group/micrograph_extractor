@@ -25,5 +25,75 @@
             "isMicrograph": true,
             "instrument": "none"
         }
+    ],
+    "llm": [
+        {
+            "isMicrograph": "true",
+            "instrument": [
+                "SEM-BSE"
+            ],
+            "material": "Cathode cross-section",
+            "comments": [
+                "kintsugi method",
+                "CBS detector",
+                "TLD",
+                "segmentation false colouring",
+                "scale bars are 5 μm"
+            ],
+            "figure": "4"
+        },
+        {
+            "isMicrograph": "true",
+            "instrument": [
+                "SEM-BSE",
+                "EDS"
+            ],
+            "material": "Porous cathode with platinum-infiltrated pores, aluminum (current collector), nickel (active material particles), carbon (carbon binder phase), fluorine (polyvinylidene fluoride binder)",
+            "comments": [
+                "kintsugi method applied",
+                "scale bars are 10 μm",
+                "composite image of element distributions",
+                "cross-section image"
+            ],
+            "figure": "3"
+        },
+        {
+            "isMicrograph": "true",
+            "instrument": "PFIB-SEM",
+            "material": "Porous cathode",
+            "comments": [
+                "Pt-C mix protective layer",
+                "kintsugi infiltration",
+                "54 nm resolution"
+            ],
+            "figure": "2"
+        },
+        {
+            "isMicrograph": "true",
+            "instrument": [
+                "X-ray Micro CT",
+                "Synchrotron Hard Beam",
+                "FIB-SEM",
+                "SEM-BSE"
+            ],
+            "material": "NMC cathodes",
+            "comments": [
+                "virtual cross-section",
+                "X-ray phase contrast",
+                "plasma FIB prepared",
+                "regions highlighted in different colors indicating different materials or features"
+            ],
+            "figure": "1"
+        },
+        {
+            "isMicrograph": "true",
+            "instrument": "High resolution imaging",
+            "material": "Single NMC (Nickel Manganese Cobalt) particle",
+            "comments": [
+                "crack network observed",
+                "scale bar is 5 μm"
+            ],
+            "figure": "5"
+        }
     ]
 }
