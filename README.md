@@ -6,7 +6,7 @@ Scripts for creating, analyzing and evaluating an LLM-labelled micrograph datase
 
 ## Installation:
 
-NB: assumes a POSIX enviroment (macOS/ubuntu) and that python3.10 is installed on the system. 
+NB: assumes a UNIX enviroment (macOS/ubuntu) and that python3.10 is installed on the system. 
 
 From the root directory run (interactive mode needed for venv) 
 ```
