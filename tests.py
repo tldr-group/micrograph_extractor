@@ -23,6 +23,7 @@ Potential causes:
 - FigureExtractor not built properly - make sure user permissions on pdffigures2/ set right and `sbt build` 
 has been successfully run in the `pdffigures2` directory
 - some bug in the folder structure/os mkdirs
+- sbt can fail to install dependencies like ivy on managed system (like university computers)
 """
 
 llm_fail_message = """
