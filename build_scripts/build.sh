@@ -43,6 +43,8 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r build_scripts/requirements.txt
 
+# we need to make sure the user has access to the folder
+sudo chmod o+rwx -R pdffigures2
 # build the thing - this was what caused the previous errors
 cd pdffigures2
 # we need to run sbt as a normal user s.t python can call it later, so switch here
