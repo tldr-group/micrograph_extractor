@@ -2,6 +2,10 @@ from os import getcwd, makedirs
 from os.path import join
 from extract import single_pdf_extract_process, CWD
 from analyze import single_regex_label
+import sys
+import argparse
+
+JAR = False
 
 llm_available = False
 try:
@@ -70,9 +74,9 @@ class Tests(unittest.TestCase):
 
         for new_dir in [target_dir, out_img_dir, processed_dir]:
             makedirs(new_dir, exist_ok=True)
-
+        print(JAR)
         captions, _ = single_pdf_extract_process(
-            target_pdf, out_img_dir, out_data_dir, processed_dir
+            target_pdf, out_img_dir, out_data_dir, processed_dir, use_jar=JAR
         )
         assert len(captions) > 0, extract_fail_message
 
@@ -116,4 +120,12 @@ class Tests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    # arg parse + unit test from chepner @ https://stackoverflow.com/questions/73625874/argparse-and-unittest-main
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-jar", action="store_true", help="Use .jar of pdffigures not sbt"
+    )
+    args, remaining = parser.parse_known_args()
+    JAR = args.jar
+    remaining.insert(0, sys.argv[0])
+    unittest.main(argv=remaining)

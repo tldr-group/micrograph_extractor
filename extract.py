@@ -3,9 +3,10 @@ import numpy as np
 from PIL import Image
 from skimage.measure import label
 from skimage.morphology import binary_opening
-from os import getcwd, listdir
+from os import getcwd, listdir, system
 import json
 from typing import List, Tuple
+import argparse
 
 # ==================================== EXTRACT FIGURES AND CAPTIONS ====================================
 
@@ -24,6 +25,7 @@ def extract_figures_captions(
     DPI: int = 200,
     verbose: bool = False,
     continue_on_err: bool = True,
+    use_jar: bool = False,
 ) -> int:
     """Run pdffigures2 (https://github.com/allenai/pdffigures2) on pdf file/directory, saving output figures and captions to given directory.
 
@@ -59,10 +61,29 @@ def extract_figures_captions(
         stdout = subprocess.DEVNULL
 
     exit_code: int = 0
-    try:
-        subprocess.run(["sbt", run_str], check=True, cwd=PDFF2_PATH, stdout=stdout)
-    except subprocess.CalledProcessError as err:
-        exit_code = 1
+    if use_jar:
+        cmd_list = [
+            f"java",
+            "-jar",
+            "pdffigures2.jar",
+            f"{abs_read_path}",
+            "-m",
+            f"{abs_img_save_path}",
+            "-d",
+            f" {abs_caption_save_path}",
+            "-i",
+            f"{DPI}",
+        ]
+        cmd_str = f"cd {CWD}/pdffigures2;" + " ".join(cmd_list) + " > /dev/null"
+        try:
+            system(cmd_str)
+        except:
+            exit_code = 1
+    else:
+        try:
+            subprocess.run(["sbt", run_str], check=True, cwd=PDFF2_PATH, stdout=stdout)
+        except subprocess.CalledProcessError as err:
+            exit_code = 1
     return exit_code
 
 
@@ -236,6 +257,7 @@ def single_pdf_extract_process(
     out_data_path: str,
     out_processed_path: str,
     save_original_figures: bool = True,
+    use_jar: bool = False,
 ) -> Tuple[List[str], List[str]]:
     """Given ABSOLUTE path to PDF and ABSOLUTE paths to where to dump the images and caption data (usually .../tmp/),
     call pdffigures2 to extract. Then loop through all extracted images, find which figure they belong to and th
@@ -253,7 +275,7 @@ def single_pdf_extract_process(
     """
     # TODO: edit this to just return list of captions and figure they belong to (1-indexed) to work with new file strucutre
     filename = pdf_path.split("/")[-1].split(".")[0]
-    extract_figures_captions(pdf_path, out_img_path, out_data_path)
+    extract_figures_captions(pdf_path, out_img_path, out_data_path, use_jar=use_jar)
     json = load_list_json(f"{out_data_path}{filename}.json")
     captions: List[str] = []
     img_paths: List[str] = []
