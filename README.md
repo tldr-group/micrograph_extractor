@@ -18,15 +18,23 @@ Alternative using conda:
 sudo bash -i build_scripts/build_conda.sh
 ```
 
-Note that if using mac, you will need the [brew](https://brew.sh/) package manager.
-Tested on 64-bit Ubuntu 22.04.4 LTS.
+Note that if using mac, you will need the [brew](https://brew.sh/) package manager, and it may be more convenient to use conda.
+Tested on 64-bit Ubuntu 22.04.4 LTS, and macOS.
+
+If you cannot install sbt or build the project, install the [java JDK/JRE](https://www.java.com/en/download/manual.jsp) using your system package manager (brew, apt, *etc.*) and set the `use_jar=True` flag in `extract.py`. This will use the standalone .jar file of pdffigures and the java runtime instead of building the scala project.
 
 ## Testing:
 
-From the root directory **with your virtual environment activated** run
+From the root directory **with your virtual environment activated** and OPENAI_API_KEY enviornment variable set, run
 ```
 python tests.py
 ```
+
+If you are on mac (or using the .jar version), run
+```
+python tests.py -jar
+```
+
 This will run a test of the (sub-)figure & caption extraction alongside some basic caption analysis using string matching or GPT-4 on an example paper [(DOI 10.1149/1945-7111/ac7a68)](https://iopscience.iop.org/article/10.1149/1945-7111/ac7a68/meta).
 
 
