@@ -10,7 +10,7 @@ case "$(uname -sr)" in
 
    Darwin*)
      echo 'Mac OS X - needs brew to install'
-     brew install sbt
+     sudo -u $SUDO_USER brew install oracle-jdk --cask
      ;;
 
    Linux*Microsoft*)
