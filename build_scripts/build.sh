@@ -10,6 +10,7 @@ case "$(uname -sr)" in
 
    Darwin*)
      echo 'Mac OS X - needs brew to install'
+     sudo -u $SUDO_USER brew install python-tk@3.10
      sudo -u $SUDO_USER brew install oracle-jdk --cask
      ;;
 
@@ -42,6 +43,8 @@ esac
 python3.10 -m venv .venv
 source .venv/bin/activate
 pip install -r build_scripts/requirements.txt
+# make sure venv has user permissions (so easy to delete)
+sudo chmod o+rwx -R .venv
 
 # we need to make sure the user has access to the folder
 sudo chmod o+rwx -R pdffigures2
@@ -54,5 +57,4 @@ exit
 EOF
 cd ..
 sudo chmod o+rwx -R pdffigures2
-# make sure venv has user permissions (so easy to delete)
-sudo chmod o+rwx -R .venv
+

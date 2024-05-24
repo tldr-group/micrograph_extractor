@@ -48,40 +48,45 @@
                 "SEM-BSE",
                 "EDS"
             ],
-            "material": "Porous cathode with platinum-infiltrated pores, aluminum (current collector), nickel (active material particles), carbon (carbon binder phase), fluorine (polyvinylidene fluoride binder)",
+            "material": [
+                "Aluminum (current collector)",
+                "Nickel (Active Material particles)",
+                "Platinum (pores)",
+                "Carbon (Carbon Binder Domain)",
+                "Fluorine (probably from the polyvinylidene fluoride binder)"
+            ],
             "comments": [
-                "kintsugi method applied",
-                "scale bars are 10 μm",
-                "composite image of element distributions",
-                "cross-section image"
+                "Kintsugi method applied",
+                "Cross-section image",
+                "Composite image of element distributions",
+                "Scale bars are 10 μm"
             ],
             "figure": "3"
         },
         {
             "isMicrograph": "true",
-            "instrument": "PFIB-SEM",
-            "material": "Porous cathode",
+            "instrument": "Helios Hydra PFIB-SEM",
+            "material": "Porous cathode with Pt-C mix",
             "comments": [
-                "Pt-C mix protective layer",
-                "kintsugi infiltration",
-                "54 nm resolution"
+                "kintsugi infiltration technique",
+                "54 nm resolution",
+                "cross-section preparation workflow"
             ],
             "figure": "2"
         },
         {
             "isMicrograph": "true",
             "instrument": [
-                "X-ray Micro CT",
+                "Micro CT",
                 "Synchrotron Hard Beam",
                 "FIB-SEM",
                 "SEM-BSE"
             ],
             "material": "NMC cathodes",
             "comments": [
-                "virtual cross-section",
-                "X-ray phase contrast",
-                "plasma FIB prepared",
-                "regions highlighted in different colors indicating different materials or features"
+                "cross-sectioned particle",
+                "cross-sectioned patch of CBD",
+                "ambiguous content in uninfiltrated pore"
             ],
             "figure": "1"
         },
