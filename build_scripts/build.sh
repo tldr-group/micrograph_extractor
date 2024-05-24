@@ -4,13 +4,15 @@ echo "cloning pdffigures2"
 # clone pdffigures2
 git clone https://github.com/allenai/pdffigures2
 
+# move binary to folder
 mv pdffigures2.jar pdffigures2/pdffigures2.jar
-echo "installing sbt" 
+echo "installing sbt or jre" 
 # from oHo @ https://stackoverflow.com/questions/3466166/how-to-check-if-running-in-cygwin-mac-or-linux
 case "$(uname -sr)" in
 
    Darwin*)
      echo 'Mac OS X - needs brew to install'
+     # install JDK & JRE to run .jar binary - easier than installing sbt
      sudo -u $SUDO_USER brew install oracle-jdk --cask
      ;;
 

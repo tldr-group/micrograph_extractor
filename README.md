@@ -21,7 +21,7 @@ sudo bash -i build_scripts/build_conda.sh
 Note that if using mac, you will need the [brew](https://brew.sh/) package manager, and it may be more convenient to use conda.
 Tested on 64-bit Ubuntu 22.04.4 LTS, and macOS.
 
-If you cannot install sbt or build the project, install the [java JDK/JRE](https://www.java.com/en/download/manual.jsp) using your system package manager (brew, apt, *etc.*) and set the `use_jar=True` flag in `extract.py`. This will use the standalone .jar file of pdffigures and the java runtime instead of building the scala project.
+If you cannot install sbt or build the project, install the [java JDK/JRE](https://www.java.com/en/download/manual.jsp) using your system package manager (brew, apt, *etc.*) and set the `use_jar=True` flag in `extract.py`. This will use the standalone .jar file of pdffigures and the java runtime instead of building the scala project. Note the **pdffigures2.jar file must be in the `pdffigures2` folder**.
 
 ## Testing:
 
