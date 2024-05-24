@@ -8,6 +8,17 @@ np.random.seed(1001)
 import matplotlib.pyplot as plt
 
 
+colours = {
+    "TEM": "#65af4b",
+    "OPTICAL": "#fed966",
+    "SEM": "#82c3ff",
+    "AFM": "#ff6666",
+    "OTHER": "#7c7c7c",
+    "RENDER": "#000000",
+}
+BORDER_WIDTH = 8
+
+
 def _check_list(string: str, substrings: list[str]) -> bool:
     match = False
     for sub in substrings:
@@ -46,58 +57,43 @@ def abbr_fname_to_full(abbr_fname: str) -> str:
     return "_".join(fname_li) + ".jpg"
 
 
-CWD = getcwd()
-labels_path = join(CWD, "micrographs/labels.csv")
+def load_df(standardise_instruments: bool = True) -> pd.DataFrame:
+    cwd = getcwd()
+    labels_path = join(cwd, "micrographs/labels.csv")
+    df = pd.read_csv(
+        labels_path,
+        delimiter="|",
+    )
+    df.columns = [
+        "idx",
+        "abbreviated_fname",
+        "llm_label",
+        "instrument",
+        "comments",
+        "real_caption",
+        "title",
+        "authors",
+        "doi",
+    ]
+    # remove duplicate index
+    df = df.drop(
+        columns=["idx"],
+    )
+    if standardise_instruments:
+        df["instrument"] = df["instrument"].apply(get_instrument)
 
-df = pd.read_csv(
-    labels_path,
-    delimiter="|",
-)
-# assign column headers
-df.columns = [
-    "idx",
-    "abbreviated_fname",
-    "llm_label",
-    "instrument",
-    "comments",
-    "real_caption",
-    "title",
-    "authors",
-    "doi",
-]
-# remove duplicate index
-df = df.drop(
-    columns=["idx"],
-)
-# standardise instruments
-df["instrument"] = df["instrument"].apply(get_instrument)
-sem_micrographs = df[df["instrument"] == "SEM"]
-tem_micrographs = df[df["instrument"] == "TEM"]
-optical_micrographs = df[df["instrument"] == "OPTICAL"]
-
-rows = []
-for df in [sem_micrographs, tem_micrographs, optical_micrographs]:
-    row = df.sample(1)
-    print(abbr_fname_to_full(row["abbreviated_fname"].iloc[0]))
-    rows.append(row)
-
-colours = {
-    "TEM": "#65af4b",
-    "OPTICAL": "#fed966",
-    "SEM": "#82c3ff",
-    "AFM": "#ff6666",
-    "OTHER": "#7c7c7c",
-}
-BORDER_WIDTH = 8
+    return df
 
 
-def get_image(mat: Image.Image, instrument: str) -> Image.Image:
+def get_image(
+    mat: Image.Image, instrument: str, sf: float = 0.5, bw: int = BORDER_WIDTH
+) -> Image.Image:
     img = mat.convert("RGB")
-    new_w, new_h = img.width // 2, img.height // 2
+    new_w, new_h = int(img.width * sf), int(img.height * sf)
     downsample = img.resize((new_w, new_h))
-    outline = Image.new("RGB", (new_w + BORDER_WIDTH * 2, new_h + BORDER_WIDTH * 2))
+    outline = Image.new("RGB", (new_w + bw * 2, new_h + bw * 2))
     outline.paste(colours[instrument], (0, 0, outline.width, outline.height))
-    outline.paste(downsample, (BORDER_WIDTH, BORDER_WIDTH))
+    outline.paste(downsample, (bw, bw))
     return outline
 
 
@@ -130,39 +126,51 @@ def entry_to_text(row: pd.DataFrame) -> str:
     return out_str
 
 
-fig, axs = plt.subplots(nrows=3, ncols=2)
-fig.set_size_inches(10, 10)
+if __name__ == "__main__":
+    CWD = getcwd()
+    df = load_df(True)
 
-props = dict(boxstyle="round", facecolor="wheat", alpha=0.5)
+    sem_micrographs = df[df["instrument"] == "SEM"]
+    tem_micrographs = df[df["instrument"] == "TEM"]
+    optical_micrographs = df[df["instrument"] == "OPTICAL"]
 
+    rows = []
+    for df in [sem_micrographs, tem_micrographs, optical_micrographs]:
+        row = df.sample(1)
+        print(abbr_fname_to_full(row["abbreviated_fname"].iloc[0]))
+        rows.append(row)
 
-for i, row in enumerate(rows):
-    fname = abbr_fname_to_full(row["abbreviated_fname"].iloc[0])
-    print(CWD)
+    fig, axs = plt.subplots(nrows=3, ncols=2)
+    fig.set_size_inches(10, 10)
 
-    img_path = join(CWD, "micrographs", fname)
-    img = Image.open(img_path)
-    img = resize_longest_side(img, 512 * 2, 1)
-    img = get_image(img, row["instrument"].iloc[0])
-    axs[i, 0].imshow(img)
-    axs[i, 0].set_axis_off()
+    props = dict(boxstyle="round", facecolor="wheat", alpha=0.5)
 
-    text = entry_to_text(row)
-    axs[i, 1].text(
-        0,
-        0.5,
-        fontsize=12,
-        s=text,
-        color="r",
-        bbox=props,
-        fontfamily="monospace",
-        wrap=True,
-    )
+    for i, row in enumerate(rows):
+        fname = abbr_fname_to_full(row["abbreviated_fname"].iloc[0])
 
-    caption_text = row["real_caption"].iloc[0][:500]
-    caption_text_fmt = f'"{caption_text}..."'
-    axs[i, 1].text(0, 0.1, fontsize=9, s=caption_text_fmt, wrap=True)
-    axs[i, 1].set_axis_off()
+        img_path = join(CWD, "micrographs", fname)
+        img = Image.open(img_path)
+        img = resize_longest_side(img, 512 * 2, 1)
+        img = get_image(img, row["instrument"].iloc[0])
+        axs[i, 0].imshow(img)
+        axs[i, 0].set_axis_off()
 
-plt.tight_layout()
-plt.savefig("plots/supp_labels.png")
+        text = entry_to_text(row)
+        axs[i, 1].text(
+            0,
+            0.5,
+            fontsize=12,
+            s=text,
+            color="r",
+            bbox=props,
+            fontfamily="monospace",
+            wrap=True,
+        )
+
+        caption_text = row["real_caption"].iloc[0][:500]
+        caption_text_fmt = f'"{caption_text}..."'
+        axs[i, 1].text(0, 0.1, fontsize=9, s=caption_text_fmt, wrap=True)
+        axs[i, 1].set_axis_off()
+
+    plt.tight_layout()
+    plt.savefig("plots/supp_labels.png")
