@@ -19,6 +19,7 @@ sudo bash -i build_scripts/build_conda.sh
 ```
 
 Note that if using mac, you will need the [brew](https://brew.sh/) package manager.
+Tested on 64-bit Ubuntu 22.04.4 LTS.
 
 ## Testing:
 

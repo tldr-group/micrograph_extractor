@@ -169,8 +169,11 @@ dataset/*
 tmp/*
 scratchpad.ipynb
 old/*
+
+plots/MatSciBERT
 plots/*.png
 plots/*.ipynb
+plots/embeddings
 
 
 /micrograph_dataset/
